@@ -1315,9 +1315,8 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 				logger.Error("failed to send telegram message", zap.Error(err))
 				return
 			}
-		}
-		else {
-				logger.Info("No error", zap.Int64("tg_message_id", sentMsg.MessageId), zap.Int64("tg_thread_id", sentMsg.MessageThreadId))
+		} else {
+			logger.Info("No error", zap.Int64("tg_message_id", sentMsg.MessageId), zap.Int64("tg_thread_id", sentMsg.MessageThreadId))
 		}
 		if sentMsg != nil && sentMsg.MessageId != 0 {
 			database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
