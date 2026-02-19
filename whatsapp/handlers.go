@@ -1015,37 +1015,40 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 			return
 		}
 
-		decoder := goVCard.NewDecoder(bytes.NewReader([]byte(contactMsg.GetVcard())))
-		card, err := decoder.Decode()
-		if err != nil {
-			bridgedText += "\n<i>Couldn't send the vCard as failed to parse it</i>"
-			sentMsg, _ := tgBot.SendMessage(cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
-				ReplyParameters: &gotgbot.ReplyParameters{
-					MessageId: replyToMsgId,
-				},
-				MessageThreadId: threadId,
-			})
-			if sentMsg.MessageId != 0 {
-				database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
-					cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
-			}
-			return
-		}
+		   decoder := goVCard.NewDecoder(bytes.NewReader([]byte(contactMsg.GetVcard())))
+		   card, err := decoder.Decode()
+		   if err != nil {
+			   bridgedText += "\n<i>Couldn't send the vCard as failed to parse it</i>"
+			   sentMsg, _ := tgBot.SendMessage(cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
+				   ReplyParameters: &gotgbot.ReplyParameters{
+					   MessageId: replyToMsgId,
+				   },
+				   MessageThreadId: threadId,
+			   })
+			   if sentMsg.MessageId != 0 {
+				   database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
+					   cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
+			   }
+			   return
+		   }
 
-		sentMsg, _ := tgBot.SendContact(cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
-			&gotgbot.SendContactOpts{
-				Vcard: contactMsg.GetVcard(),
-				ReplyParameters: &gotgbot.ReplyParameters{
-					MessageId: replyToMsgId,
-				},
-				MessageThreadId: threadId,
-				ReplyMarkup:     replyMarkup,
-			})
-		if sentMsg.MessageId != 0 {
-			database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
-				cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
-		}
-		return
+		   // Create or get Telegram topic/thread using the contact's display name
+		   threadId, _ = utils.TgGetOrMakeThreadFromWa_String(card.PreferredValue(goVCard.FieldTelephone), cfg.Telegram.TargetChatID, contactMsg.GetDisplayName())
+
+		   sentMsg, _ := tgBot.SendContact(cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
+			   &gotgbot.SendContactOpts{
+				   Vcard: contactMsg.GetVcard(),
+				   ReplyParameters: &gotgbot.ReplyParameters{
+					   MessageId: replyToMsgId,
+				   },
+				   MessageThreadId: threadId,
+				   ReplyMarkup:     replyMarkup,
+			   })
+		   if sentMsg.MessageId != 0 {
+			   database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
+				   cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
+		   }
+		   return
 
 	} else if v.Message.GetContactsArrayMessage() != nil {
 
