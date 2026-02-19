@@ -33,6 +33,12 @@ const (
 	UploadSizeLimit   uint64 = 52428800
 )
 
+// TgEditForumTopicName edits the name of a forum topic (thread) in a Telegram supergroup.
+func TgEditForumTopicName(b *gotgbot.Bot, chatId int64, threadId int64, newName string) error {
+	_, err := b.EditForumTopicName(chatId, threadId, newName, nil)
+	return err
+}
+
 func TgRegisterBotCommands(b *gotgbot.Bot, commands ...gotgbot.BotCommand) error {
 	_, err := b.SetMyCommands(commands, &gotgbot.SetMyCommandsOpts{
 		LanguageCode: "en",

@@ -719,10 +719,7 @@ func SyncTopicNamesHandler(b *gotgbot.Bot, c *ext.Context) error {
 			newName = utils.WaGetContactName(waChatJid)
 		}
 
-		state.State.BotManager.EditForumTopic(context.Background(), c.EffectiveChat.Id, tgThreadId, &gotgbot.EditForumTopicOpts{
-			Name:              newName,
-			IconCustomEmojiId: nil,
-		})
+			   utils.TgEditForumTopicName(b, c.EffectiveChat.Id, tgThreadId, newName)
 		time.Sleep(5 * time.Second)
 	}
 
