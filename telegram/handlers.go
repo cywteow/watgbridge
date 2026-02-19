@@ -25,6 +25,7 @@ import (
 	"go.mau.fi/whatsmeow/appstate"
 	waTypes "go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
+	"go.uber.org/zap"
 )
 
 type waTgBridgeCommand struct {
@@ -35,32 +36,36 @@ type waTgBridgeCommand struct {
 var commands = []waTgBridgeCommand{}
 
 func AddTelegramHandlers() {
+	// 1. Declare variables ONCE at the top
 	var (
 		cfg        = state.State.Config
 		dispatcher = state.State.TelegramDispatcher
 	)
 
-	// 1. Correct Handler for deleted forum topics (threads)
+	// 2. Handler for deleted forum topics (using the service message filter)
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(
 		func(msg *gotgbot.Message) bool {
-			// Filter: only process if the message indicates a deleted forum topic
 			return msg.ForumTopicDeleted != nil
 		},
 		func(b *gotgbot.Bot, c *ext.Context) error {
 			tgChatId := c.EffectiveChat.Id
-			tgThreadId := c.EffectiveMessage.MessageThreadId
-
-			// Remove the mapping from the database
+			// Access thread ID from the service message metadata
+			tgThreadId := c.EffectiveMessage.MessageThreadId 
+			
 			_ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
-
-			// 2. Fix Logger: Use .Info with zap fields or SugaredLogger
-			// Assuming State.Logger is a *zap.Logger
-			state.State.Logger.Info("Forum topic deleted",
+			
+			state.State.Logger.Info("Cleaned up deleted topic",
 				zap.Int64("chat_id", tgChatId),
-				zap.Int64("thread_id", tgThreadId),
-			)
+				zap.Int64("thread_id", tgThreadId))
 			return nil
 		}), DispatcherForwardHandlerGroup)
+
+	// 3. Existing Message Handler
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(
+		func(msg *gotgbot.Message) bool {
+			return msg.Chat.Id == cfg.Telegram.TargetChatID
+		}, BridgeTelegramToWhatsAppHandler,
+	), DispatcherForwardHandlerGroup)
 	var (
 		cfg        = state.State.Config
 		dispatcher = state.State.TelegramDispatcher
