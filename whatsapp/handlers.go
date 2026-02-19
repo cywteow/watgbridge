@@ -163,7 +163,6 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		waClient = state.State.WhatsAppClient
 	)
 	defer logger.Sync()
-	logger.Info("received message from others event")
 
 	var msgId string
 	if isEdited {
@@ -1285,9 +1284,8 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		if err != nil {
 			// Check if topic was deleted and try to recreate
 			errStr := err.Error()
-			logger.Info("failed to send message, checking if it's due to deleted topic", zap.String("error", errStr	))
 			if (strings.Contains(errStr, "message thread not found") || strings.Contains(errStr, "MESSAGE_THREAD_NOT_FOUND") || strings.Contains(errStr, "TOPIC_DELETED") || strings.Contains(errStr, "TOPIC_ID_INVALID")) {
-				logger.Info("topic was deleted, recreating", zap.Int64("old_thread_id", threadId))
+				// logger.Info("topic was deleted, recreating", zap.Int64("old_thread_id", threadId))
 				_ = database.ChatThreadDropPairByTg(cfg.Telegram.TargetChatID, threadId)
 
 				var newThreadId int64
@@ -1301,7 +1299,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 				if recreateErr != nil {
 					logger.Error("failed to recreate topic", zap.Error(recreateErr))
 				} else {
-					logger.Info("topic recreated, retrying", zap.Int64("new_thread_id", newThreadId))
+					// logger.Info("topic recreated, retrying", zap.Int64("new_thread_id", newThreadId))
 					sentMsg, err = tgBot.SendMessage(cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
 						ReplyParameters: &gotgbot.ReplyParameters{},
 						MessageThreadId: newThreadId,
@@ -1315,8 +1313,6 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 				logger.Error("failed to send telegram message", zap.Error(err))
 				return
 			}
-		} else {
-			logger.Info("No error", zap.Int64("tg_message_id", sentMsg.MessageId), zap.Int64("tg_thread_id", sentMsg.MessageThreadId))
 		}
 		if sentMsg != nil && sentMsg.MessageId != 0 {
 			database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
