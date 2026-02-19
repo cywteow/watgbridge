@@ -130,7 +130,7 @@ jobs:
               --restart unless-stopped \
               -e NODE_ENV="production" \
               -v watgbridge_config:/config_mount:ro \
-              -v //mnt/Server/docker/watgbridge:/data \
+              -v /mnt/Server/docker/watgbridge:/data \
               $image_name sh -c "cp /config_mount/config.yaml /go/src/watgbridge/config.yaml && ./watgbridge"
 
             # 6. Health check: wait and verify container is still running
