@@ -201,7 +201,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		return
 	}
 
-	replyMarkup := utils.TgBuildUrlButton(utils.WaGetTopicSubject(v.Info.Sender), fmt.Sprintf("https://wa.me/%s", v.Info.MessageSource.Sender.ToNonAD().User))
+	replyMarkup := utils.TgBuildUrlButton(utils.WaGetContactName(v.Info.Sender), fmt.Sprintf("https://wa.me/%s", v.Info.MessageSource.Sender.ToNonAD().User))
 	if !isEdited {
 		if lowercaseText := strings.ToLower(text); !v.Info.IsFromMe && v.Info.IsGroup && slices.Contains(cfg.WhatsApp.TagAllAllowedGroups, v.Info.Chat.User) &&
 			(strings.Contains(lowercaseText, "@all") || strings.Contains(lowercaseText, "@everyone")) {
@@ -223,7 +223,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		} else if v.Info.IsFromMe {
 			bridgedText += "🧑: <b>You [other device]</b>\n"
 		} else if v.Info.IsGroup {
-			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetTopicSubject(v.Info.MessageSource.Sender)))
+			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetContactName(v.Info.MessageSource.Sender)))
 		}
 
 	} else {
@@ -231,7 +231,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		if v.Info.IsFromMe {
 			bridgedText += "🧑: <b>You [other device]</b>\n"
 		} else {
-			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetTopicSubject(v.Info.MessageSource.Sender)))
+			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetContactName(v.Info.MessageSource.Sender)))
 		}
 		if v.Info.IsIncomingBroadcast() {
 			bridgedText += "👥: <b>(Broadcast)</b>\n"
@@ -414,10 +414,10 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		} else if v.Info.IsIncomingBroadcast() {
 			if (v.Info.MessageSource.AddressingMode == waTypes.AddressingModePN) || v.Info.MessageSource.SenderAlt.IsEmpty() {
 				threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.MessageSource.Sender.ToNonAD(), cfg.Telegram.TargetChatID,
-					utils.WaGetTopicSubject(v.Info.MessageSource.Sender.ToNonAD()))
+					utils.WaGetContactName(v.Info.MessageSource.Sender.ToNonAD()))
 			} else {
 				threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.MessageSource.SenderAlt.ToNonAD(), cfg.Telegram.TargetChatID,
-					utils.WaGetTopicSubject(v.Info.MessageSource.SenderAlt.ToNonAD()))
+					utils.WaGetContactName(v.Info.MessageSource.SenderAlt.ToNonAD()))
 			}
 			if err != nil {
 				utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
@@ -435,7 +435,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		} else {
 			target_chat_jid := v.Info.Chat.ToNonAD()
 
-			threadId, err = utils.TgGetOrMakeThreadFromWa(target_chat_jid, cfg.Telegram.TargetChatID, utils.WaGetTopicSubject(target_chat_jid))
+			threadId, err = utils.TgGetOrMakeThreadFromWa(target_chat_jid, cfg.Telegram.TargetChatID, utils.WaGetContactName(target_chat_jid))
 			if err != nil {
 				utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
 					target_chat_jid.String()), err)
@@ -1264,7 +1264,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		if mentioned := v.Message.GetExtendedTextMessage().GetContextInfo().GetMentionedJID(); mentioned != nil {
 			for _, jid := range mentioned {
 				parsedJid, _ := utils.WaParseJID(jid)
-				name := utils.WaGetTopicSubject(parsedJid)
+				name := utils.WaGetContactName(parsedJid)
 				// text = strings.ReplaceAll(text, "@"+parsedJid.User, "@("+html.EscapeString(name)+")")
 				bridgedText = strings.ReplaceAll(
 					bridgedText, "@"+parsedJid.User,
@@ -1321,7 +1321,7 @@ func UndecryptableMessageEventHandler(v *events.UndecryptableMessage) {
 		} else if v.Info.IsFromMe {
 			bridgedText += "🧑: <b>You [other device]</b>\n"
 		} else if v.Info.IsGroup {
-			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetTopicSubject(v.Info.MessageSource.Sender)))
+			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetContactName(v.Info.MessageSource.Sender)))
 		}
 
 	} else {
@@ -1329,7 +1329,7 @@ func UndecryptableMessageEventHandler(v *events.UndecryptableMessage) {
 		if v.Info.IsFromMe {
 			bridgedText += "🧑: <b>You [other device]</b>\n"
 		} else {
-			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetTopicSubject(v.Info.MessageSource.Sender)))
+			bridgedText += fmt.Sprintf("🧑: <b>%s</b>\n", html.EscapeString(utils.WaGetContactName(v.Info.MessageSource.Sender)))
 		}
 		if v.Info.IsIncomingBroadcast() {
 			bridgedText += "👥: <b>(Broadcast)</b>\n"
@@ -1361,10 +1361,10 @@ func UndecryptableMessageEventHandler(v *events.UndecryptableMessage) {
 	} else if v.Info.IsIncomingBroadcast() {
 		if (v.Info.MessageSource.AddressingMode == waTypes.AddressingModePN) || v.Info.MessageSource.SenderAlt.IsEmpty() {
 			threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.MessageSource.Sender.ToNonAD(), cfg.Telegram.TargetChatID,
-				utils.WaGetTopicSubject(v.Info.MessageSource.Sender.ToNonAD()))
+				utils.WaGetContactName(v.Info.MessageSource.Sender.ToNonAD()))
 		} else {
 			threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.MessageSource.SenderAlt.ToNonAD(), cfg.Telegram.TargetChatID,
-				utils.WaGetTopicSubject(v.Info.MessageSource.SenderAlt.ToNonAD()))
+				utils.WaGetContactName(v.Info.MessageSource.SenderAlt.ToNonAD()))
 		}
 
 		if err != nil {
@@ -1383,7 +1383,7 @@ func UndecryptableMessageEventHandler(v *events.UndecryptableMessage) {
 	} else {
 		target_chat_jid := v.Info.Chat.ToNonAD()
 
-		threadId, err = utils.TgGetOrMakeThreadFromWa(target_chat_jid, cfg.Telegram.TargetChatID, utils.WaGetTopicSubject(target_chat_jid))
+		threadId, err = utils.TgGetOrMakeThreadFromWa(target_chat_jid, cfg.Telegram.TargetChatID, utils.WaGetContactName(target_chat_jid))
 		if err != nil {
 			utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
 				target_chat_jid.String()), err)
@@ -1410,7 +1410,7 @@ func CallOfferEventHandler(v *events.CallOffer) {
 	)
 
 	// TODO : Check and handle group calls
-	callerName := utils.WaGetTopicSubject(v.CallCreator)
+	callerName := utils.WaGetContactName(v.CallCreator)
 
 	callThreadId, err := utils.TgGetOrMakeThreadFromWa_String("calls", cfg.Telegram.TargetChatID, "Calls")
 	if err != nil {
@@ -1493,7 +1493,7 @@ func UserAboutEventHandler(v *events.UserAbout) {
 		}
 	}
 
-	tgThreadId, err = utils.TgGetOrMakeThreadFromWa(v.JID.ToNonAD(), cfg.Telegram.TargetChatID, utils.WaGetTopicSubject(v.JID.ToNonAD()))
+	tgThreadId, err = utils.TgGetOrMakeThreadFromWa(v.JID.ToNonAD(), cfg.Telegram.TargetChatID, utils.WaGetContactName(v.JID.ToNonAD()))
 	if err != nil {
 		logger.Warn(
 			"failed to create a new thread for a WhatsApp chat (handling UserAbout event)",
@@ -1545,7 +1545,7 @@ func RevokedMessageEventHandler(v *events.Message) {
 	if v.Info.IsFromMe {
 		deleterName = "you"
 	} else {
-		deleterName = utils.WaGetTopicSubject(deleter)
+		deleterName = utils.WaGetContactName(deleter)
 	}
 
 	tgChatId, tgThreadId, tgMsgId, err := database.MsgIdGetTgFromWa(waMsgId, waChatId)
@@ -1616,7 +1616,7 @@ func PictureEventHandler(v *events.Picture) {
 			)
 			return
 		}
-		changer := utils.WaGetTopicSubject(v.Author)
+		changer := utils.WaGetContactName(v.Author)
 		if v.Remove {
 			updateText := fmt.Sprintf("The profile picture was removed by %s", html.EscapeString(changer))
 			err = utils.TgSendTextById(
@@ -1659,7 +1659,7 @@ func PictureEventHandler(v *events.Picture) {
 			}
 		}
 	} else if v.JID.Server == waTypes.DefaultUserServer {
-		tgThreadId, err = utils.TgGetOrMakeThreadFromWa(v.JID.ToNonAD(), cfg.Telegram.TargetChatID, utils.WaGetTopicSubject(v.JID.ToNonAD()))
+		tgThreadId, err = utils.TgGetOrMakeThreadFromWa(v.JID.ToNonAD(), cfg.Telegram.TargetChatID, utils.WaGetContactName(v.JID.ToNonAD()))
 		if err != nil {
 			logger.Warn(
 				"failed to create a new thread for a WhatsApp chat (handling Picture event)",
@@ -1772,7 +1772,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	if v.Announce != nil {
 		var authorInfo string
 		if v.Sender != nil {
-			authorName := utils.WaGetTopicSubject(*v.Sender)
+			authorName := utils.WaGetContactName(*v.Sender)
 			authorInfo = fmt.Sprintf(" by %s", html.EscapeString(authorName))
 		}
 
@@ -1791,7 +1791,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	if v.Ephemeral != nil {
 		var authorInfo string
 		if v.Sender != nil {
-			authorName := utils.WaGetTopicSubject(*v.Sender)
+			authorName := utils.WaGetContactName(*v.Sender)
 			authorInfo = fmt.Sprintf(" by %s", html.EscapeString(authorName))
 		}
 
@@ -1819,7 +1819,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	if v.Delete != nil {
 		var authorInfo string
 		if v.Sender != nil {
-			authorName := utils.WaGetTopicSubject(*v.Sender)
+			authorName := utils.WaGetContactName(*v.Sender)
 			authorInfo = fmt.Sprintf(" by %s", html.EscapeString(authorName))
 		}
 
@@ -1842,12 +1842,12 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	if len(v.Join) > 0 {
 		var adderName string
 		if v.Sender != nil {
-			adderName = utils.WaGetTopicSubject(*v.Sender)
+			adderName = utils.WaGetContactName(*v.Sender)
 		}
 
 		var updateText string
 		if len(v.Join) == 1 {
-			newMemName := utils.WaGetTopicSubject(v.Join[0])
+			newMemName := utils.WaGetContactName(v.Join[0])
 			if v.Sender != nil && *v.Sender != v.Join[0] {
 				updateText = fmt.Sprintf("%s was added by %s to the group\n", html.EscapeString(newMemName), html.EscapeString(adderName))
 			} else {
@@ -1856,7 +1856,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 		} else {
 			updateText = "The following people joined the group:\n"
 			for _, newMem := range v.Join {
-				newMemName := utils.WaGetTopicSubject(newMem)
+				newMemName := utils.WaGetContactName(newMem)
 				if v.Sender != nil && *v.Sender != newMem {
 					updateText += fmt.Sprintf("- %s (added by %s)\n", html.EscapeString(newMemName), html.EscapeString(adderName))
 				} else {
@@ -1876,12 +1876,12 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	if len(v.Leave) > 0 {
 		var removerName string
 		if v.Sender != nil {
-			removerName = utils.WaGetTopicSubject(*v.Sender)
+			removerName = utils.WaGetContactName(*v.Sender)
 		}
 
 		var updateText string
 		if len(v.Leave) == 1 {
-			oldMemName := utils.WaGetTopicSubject(v.Leave[0])
+			oldMemName := utils.WaGetContactName(v.Leave[0])
 			if v.Sender != nil && *v.Sender == v.Leave[0] {
 				updateText = fmt.Sprintf("%s left the group\n", html.EscapeString(oldMemName))
 			} else {
@@ -1890,7 +1890,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 		} else {
 			updateText = "The following people left the group:\n"
 			for _, oldMem := range v.Leave {
-				oldMemName := utils.WaGetTopicSubject(oldMem)
+				oldMemName := utils.WaGetContactName(oldMem)
 				if v.Sender != nil && *v.Sender != oldMem {
 					updateText += fmt.Sprintf("- %s (kicked by %s)\n", html.EscapeString(oldMemName), html.EscapeString(removerName))
 				} else {
@@ -1909,11 +1909,11 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 
 		var demoterName string
 		if v.Sender != nil {
-			demoterName = utils.WaGetTopicSubject(*v.Sender)
+			demoterName = utils.WaGetContactName(*v.Sender)
 		}
 
 		if len(v.Demote) == 1 {
-			demotedMemName := utils.WaGetTopicSubject(v.Demote[0])
+			demotedMemName := utils.WaGetContactName(v.Demote[0])
 			updateText = fmt.Sprintf("%s was demoted in the group", html.EscapeString(demotedMemName))
 			if demoterName != "" {
 				updateText += fmt.Sprintf(" by %s", html.EscapeString(demoterName))
@@ -1926,7 +1926,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 			}
 			updateText += ":\n"
 			for _, demotedMem := range v.Demote {
-				demotedMemName := utils.WaGetTopicSubject(demotedMem)
+				demotedMemName := utils.WaGetContactName(demotedMem)
 				updateText += fmt.Sprintf("- %s\n", demotedMemName)
 			}
 		}
@@ -1941,11 +1941,11 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 
 		var promoterName string
 		if v.Sender != nil {
-			promoterName = utils.WaGetTopicSubject(*v.Sender)
+			promoterName = utils.WaGetContactName(*v.Sender)
 		}
 
 		if len(v.Promote) == 1 {
-			promotedMemName := utils.WaGetTopicSubject(v.Promote[0])
+			promotedMemName := utils.WaGetContactName(v.Promote[0])
 			updateText = fmt.Sprintf("%s was promoted in the group", html.EscapeString(promotedMemName))
 			if promoterName != "" {
 				updateText += fmt.Sprintf(" by %s", html.EscapeString(promoterName))
@@ -1958,7 +1958,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 			}
 			updateText += ":\n"
 			for _, promotedMem := range v.Promote {
-				promotedMemName := utils.WaGetTopicSubject(promotedMem)
+				promotedMemName := utils.WaGetContactName(promotedMem)
 				updateText += fmt.Sprintf("- %s\n", html.EscapeString(promotedMemName))
 			}
 		}
@@ -1969,7 +1969,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	}
 
 	if v.Topic != nil {
-		changer := utils.WaGetTopicSubject(v.Topic.TopicSetBy)
+		changer := utils.WaGetContactName(v.Topic.TopicSetBy)
 		updateText := fmt.Sprintf(
 			"The group description was changed by <b>%s</b>:\n\n<code>%s</code>",
 			html.EscapeString(changer),
@@ -1997,7 +1997,7 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 			)
 			return
 		}
-		changer := utils.WaGetTopicSubject(v.Name.NameSetBy)
+		changer := utils.WaGetContactName(v.Name.NameSetBy)
 		updateText := fmt.Sprintf(
 			"The group name was changed by <b>%s</b>:\n\n<code>%s</code>",
 			html.EscapeString(changer),

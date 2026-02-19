@@ -188,25 +188,6 @@ func WaGetContactName(jid types.JID) string {
 	       return formattedName
 }
 
-func WaGetTopicSubject(jid types.JID) string {
-	cfg := state.State.Config
-
-	// Resolve PN/LID first
-	displayUser := jid.User
-	if jid.Server == types.HiddenUserServer {
-		waClient := state.State.WhatsAppClient
-		pn, err := waClient.Store.LIDs.GetPNForLID(context.Background(), jid)
-		if err == nil && !pn.IsEmpty() {
-			displayUser = pn.User
-		}
-	}
-
-	// Default: name_number
-	name := WaGetContactName(jid)
-
-	return name
-}
-
 func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgIsFromMe bool) {
 	var (
 		cfg      = state.State.Config
