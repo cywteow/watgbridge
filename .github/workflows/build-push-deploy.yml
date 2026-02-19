@@ -71,9 +71,9 @@ jobs:
       - name: Generate config.yaml from secret and variable
         run: |
           echo "${{ vars.CONFIG_YAML_CONTENT }}" > config.yaml
-          sed -i 's|__TELEGRAM_BOT_TOKEN__|'"${{ secrets.TELEGRAM_BOT_TOKEN }}"'|g' config.yaml
-          sed -i 's|__DB_USER__|'"${{ secrets.DB_USER }}"'|g' config.yaml
-          sed -i 's|__DB_PASSWORD__|'"${{ secrets.DB_PASSWORD }}"'|g' config.yaml
+          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|g" config.yaml
+          sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" config.yaml
+          sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" config.yaml
 
       - name: Copy config.yaml to server
         uses: appleboy/scp-action@v1.0.0
