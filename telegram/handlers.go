@@ -36,30 +36,12 @@ type waTgBridgeCommand struct {
 var commands = []waTgBridgeCommand{}
 
 func AddTelegramHandlers() {
-	// 1. Declare variables ONCE at the top
+
 	var (
 		cfg        = state.State.Config
 		dispatcher = state.State.TelegramDispatcher
 	)
 
-	// 2. Handler for deleted/closed forum topics (Telegram sends ForumTopicClosed service message on deletion)
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(
-		func(msg *gotgbot.Message) bool {
-			return msg.ForumTopicClosed != nil
-		},
-		func(b *gotgbot.Bot, c *ext.Context) error {
-			tgChatId := c.EffectiveChat.Id
-			tgThreadId := c.EffectiveMessage.MessageThreadId
-
-			_ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
-
-			state.State.Logger.Info("Cleaned up deleted topic",
-				zap.Int64("chat_id", tgChatId),
-				zap.Int64("thread_id", tgThreadId))
-			return nil
-		}), DispatcherForwardHandlerGroup)
-
-	// 3. Existing Message Handler
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(
 		func(msg *gotgbot.Message) bool {
 			return msg.Chat.Id == cfg.Telegram.TargetChatID
