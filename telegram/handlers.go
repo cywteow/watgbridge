@@ -35,6 +35,19 @@ type waTgBridgeCommand struct {
 var commands = []waTgBridgeCommand{}
 
 func AddTelegramHandlers() {
+	       // Handler for deleted forum topics (threads)
+	       dispatcher.AddHandlerToGroup(handlers.NewForumTopicDeleted(
+		       func(b *gotgbot.Bot, c *ext.Context, e *gotgbot.ForumTopicDeleted) error {
+			       // Log or handle the deleted topic event
+			       // Example: Remove mapping from database if needed
+			       tgChatId := c.EffectiveChat.Id
+			       tgThreadId := e.MessageThreadId
+			       // Remove the mapping from the database
+			       _ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
+			       // Optionally log or notify
+			       state.State.Logger.Infof("Forum topic deleted: chat_id=%d, thread_id=%d", tgChatId, tgThreadId)
+			       return nil
+		       }), DispatcherForwardHandlerGroup)
 	var (
 		cfg        = state.State.Config
 		dispatcher = state.State.TelegramDispatcher
