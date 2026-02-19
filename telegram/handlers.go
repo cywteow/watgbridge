@@ -42,18 +42,17 @@ func AddTelegramHandlers() {
 		dispatcher = state.State.TelegramDispatcher
 	)
 
-	// 2. Handler for deleted forum topics (using the service message filter)
+	// 2. Handler for deleted/closed forum topics (Telegram sends ForumTopicClosed service message on deletion)
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(
 		func(msg *gotgbot.Message) bool {
-			return msg.ForumTopicDeleted != nil
+			return msg.ForumTopicClosed != nil
 		},
 		func(b *gotgbot.Bot, c *ext.Context) error {
 			tgChatId := c.EffectiveChat.Id
-			// Access thread ID from the service message metadata
-			tgThreadId := c.EffectiveMessage.MessageThreadId 
-			
+			tgThreadId := c.EffectiveMessage.MessageThreadId
+
 			_ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
-			
+
 			state.State.Logger.Info("Cleaned up deleted topic",
 				zap.Int64("chat_id", tgChatId),
 				zap.Int64("thread_id", tgThreadId))
@@ -61,16 +60,6 @@ func AddTelegramHandlers() {
 		}), DispatcherForwardHandlerGroup)
 
 	// 3. Existing Message Handler
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(
-		func(msg *gotgbot.Message) bool {
-			return msg.Chat.Id == cfg.Telegram.TargetChatID
-		}, BridgeTelegramToWhatsAppHandler,
-	), DispatcherForwardHandlerGroup)
-	var (
-		cfg        = state.State.Config
-		dispatcher = state.State.TelegramDispatcher
-	)
-
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(
 		func(msg *gotgbot.Message) bool {
 			return msg.Chat.Id == cfg.Telegram.TargetChatID
