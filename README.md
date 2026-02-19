@@ -1,7 +1,7 @@
 # WhatsApp-Telegram-Bridge
 
 Despite the name, its not exactly a "bridge". It forwards messages from WhatsApp to Telegram and you can reply to them
-from Telegram.
+from Telegram. 
 
 <a href="https://t.me/PropheCProjects">
   <img src="https://img.shields.io/badge/Updates_Channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white"></img>
