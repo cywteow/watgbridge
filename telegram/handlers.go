@@ -25,7 +25,6 @@ import (
 	"go.mau.fi/whatsmeow/appstate"
 	waTypes "go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
-	"go.uber.org/zap"
 )
 
 type waTgBridgeCommand struct {
