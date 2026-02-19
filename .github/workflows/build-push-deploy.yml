@@ -1,0 +1,143 @@
+name: Build, Push and Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        architecture: [amd64]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc golang
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Build
+        run: GOARCH=amd64 GOOS=linux go build -ldflags '-s -w' -o watgbridge_linux_amd64 .
+
+      - name: Get Project Version
+        id: get_version
+        run: |
+          echo "version=$(cat state/version.txt | tr -d '\n')" >> $GITHUB_OUTPUT
+
+      - name: Create Release for amd64
+        if: always()
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./watgbridge_linux_amd64
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  docker-push:
+    runs-on: ubuntu-latest
+    needs: build-amd64
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image (no cache)
+        run: |
+          docker build --no-cache -t ghcr.io/${{ github.repository }}:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}:latest
+
+  deploy:
+    needs: docker-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate config.yaml from secret and variable
+        run: |
+          echo "${{ vars.CONFIG_YAML_CONTENT }}" > config.yaml
+          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|g" config.yaml
+          sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" config.yaml
+          sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" config.yaml
+
+      - name: Copy config.yaml to server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ vars.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USER }}
+          key: ${{ secrets.AWS_EC2_SSH_KEY }}
+          port: ${{ vars.AWS_EC2_PORT }}
+          source: "config.yaml"
+          target: "/home/${{ secrets.AWS_EC2_USER }}"
+
+      - name: Set lowercase repository name and container name
+        run: |
+          REPO_LOWERCASE=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          REPO_NAME=$(basename "$REPO_LOWERCASE")
+          echo "REPO_LOWERCASE=$REPO_LOWERCASE" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=$REPO_NAME" >> $GITHUB_ENV
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ vars.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USER }}
+          key: ${{ secrets.AWS_EC2_SSH_KEY }}
+          port: ${{ vars.AWS_EC2_PORT }}
+          script: |
+            set -e
+            image_name="ghcr.io/${{ env.REPO_LOWERCASE }}:latest"
+            config_path="/home/${{ secrets.AWS_EC2_USER }}/config.yaml"
+
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull -q $image_name
+
+            # 1. Standard container lifecycle first so volume is not in use
+            docker stop "${{ env.CONTAINER_NAME }}" || true
+            docker rm "${{ env.CONTAINER_NAME }}" || true
+
+            # 2. Force a fresh volume on every deploy to purge old config
+            docker volume rm watgbridge_config || true
+            docker volume create watgbridge_config
+
+            # 3. Copy config into volume via helper container
+            docker run --rm \
+              -v $config_path:/src/config.yaml \
+              -v watgbridge_config:/dest \
+              alpine cp /src/config.yaml /dest/config.yaml
+
+            # 4. Delete config from host immediately after
+            rm -f $config_path
+
+            # 5. Run app: mount volume to a separate path to avoid overwriting WORKDIR
+            docker run -d \
+              --name "${{ env.CONTAINER_NAME }}" \
+              --restart unless-stopped \
+              -e NODE_ENV="production" \
+              -v watgbridge_config:/config_mount:ro \
+              $image_name sh -c "cp /config_mount/config.yaml /go/src/watgbridge/config.yaml && ./watgbridge"
+
+            # 6. Health check: wait and verify container is still running
+            sleep 5
+            if [ "$(docker inspect -f '{{.State.Running}}' ${{ env.CONTAINER_NAME }})" = "true" ]; then
+              echo "Deployment successful: Container is running."
+            else
+              echo "Deployment failed: Container crashed after start. Check logs with 'docker logs ${{ env.CONTAINER_NAME }}'"
+              exit 1
+            fi
+
+            docker image prune -f
+            docker logout ghcr.io
