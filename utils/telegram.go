@@ -35,8 +35,10 @@ const (
 
 // TgEditForumTopicName edits the name of a forum topic (thread) in a Telegram supergroup.
 func TgEditForumTopicName(b *gotgbot.Bot, chatId int64, threadId int64, newName string) error {
-	_, err := b.EditForumTopicName(chatId, threadId, newName, nil)
-	return err
+    _, err := b.EditForumTopic(chatId, threadId, &gotgbot.EditForumTopicOpts{
+        Name: newName,
+    })
+    return err
 }
 
 func TgRegisterBotCommands(b *gotgbot.Bot, commands ...gotgbot.BotCommand) error {
