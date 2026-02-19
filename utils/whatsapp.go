@@ -116,6 +116,7 @@ func WaGetContactName(jid types.JID) string {
 
 	var (
 		pn           types.JID
+		displayUser  string // The user ID to display (resolved PN or original)
 		firstName    string
 		fullName     string
 		pushName     string
@@ -124,9 +125,14 @@ func WaGetContactName(jid types.JID) string {
 		err          error
 	)
 
+	// Default to the original JID user
+	displayUser = jid.User
+
+	// If it's an LID, try to resolve it to a phone number JID
 	if jid.Server == types.HiddenUserServer {
 		pn, err = waClient.Store.LIDs.GetPNForLID(context.Background(), jid)
-		if err == nil {
+		if err == nil && !pn.IsEmpty() {
+			displayUser = pn.User // Use resolved phone number for display
 			firstName, fullName, pushName, businessName, found, err = database.ContactNameGet(pn.User, pn.Server)
 		}
 	}
@@ -135,15 +141,20 @@ func WaGetContactName(jid types.JID) string {
 		firstName, fullName, pushName, businessName, found, err = database.ContactNameGet(jid.User, jid.Server)
 	}
 
+	       // Always use full number in parentheses as suffix
+	       var suffix string
+	       suffix = fmt.Sprintf("(%s)", displayUser)
+	       prefix := ""
+
 	if err == nil && found {
 		if fullName != "" {
 			name = fullName
 		} else if businessName != "" {
-			name = businessName + " (" + jid.User + ")"
+			name = businessName
 		} else if pushName != "" {
-			name = pushName + " (" + jid.User + ")"
+			name = pushName
 		} else if firstName != "" {
-			name = firstName + " (" + jid.User + ")"
+			name = firstName
 		}
 	} else {
 		contact, err := waClient.Store.Contacts.GetContact(context.Background(), jid)
@@ -151,18 +162,47 @@ func WaGetContactName(jid types.JID) string {
 			if contact.FullName != "" {
 				name = contact.FullName
 			} else if contact.BusinessName != "" {
-				name = contact.BusinessName + " (" + jid.User + ")"
+				name = contact.BusinessName
 			} else if contact.PushName != "" {
-				name = contact.PushName + " (" + jid.User + ")"
+				name = contact.PushName
 			} else if contact.FirstName != "" {
-				name = contact.FirstName + " (" + jid.User + ")"
+				name = contact.FirstName
 			}
 		}
 	}
 
 	if name == "" {
-		name = jid.User
+		// Fallback if no name found: just return the formatted number using original helper
+		// or construct it here: Prefix(Suffix) or (Suffix)
+		if prefix != "" {
+			return prefix + suffix
+		}
+		return suffix
 	}
+
+	       // Construct final string: Name (FULL NUMBER)
+	       formattedName := name
+	       if suffix != "" {
+		       formattedName = formattedName + " " + suffix
+	       }
+	       return formattedName
+}
+
+func WaGetTopicSubject(jid types.JID) string {
+	cfg := state.State.Config
+
+	// Resolve PN/LID first
+	displayUser := jid.User
+	if jid.Server == types.HiddenUserServer {
+		waClient := state.State.WhatsAppClient
+		pn, err := waClient.Store.LIDs.GetPNForLID(context.Background(), jid)
+		if err == nil && !pn.IsEmpty() {
+			displayUser = pn.User
+		}
+	}
+
+	// Default: name_number
+	name := WaGetContactName(jid)
 
 	return name
 }
