@@ -1300,57 +1300,25 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 					logger.Error("failed to recreate topic", zap.Error(recreateErr))
 				} else {
 					logger.Info("topic recreated, retrying", zap.Int64("new_thread_id", newThreadId))
-					// Clear replyToMsgId since the original message was in the deleted topic
-					var sentMsg *gotgbot.Message
-					var err error
 					sentMsg, err = tgBot.SendMessage(cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
-						ReplyParameters: &gotgbot.ReplyParameters{
-							MessageId: replyToMsgId,
-						},
-						MessageThreadId: threadId,
+						ReplyParameters: &gotgbot.ReplyParameters{},
+						MessageThreadId: newThreadId,
 					})
 					if err != nil {
-						// Check if topic was deleted and try to recreate
-						errStr := err.Error()
-						if (strings.Contains(errStr, "message thread not found") || strings.Contains(errStr, "MESSAGE_THREAD_NOT_FOUND") || strings.Contains(errStr, "TOPIC_DELETED") || strings.Contains(errStr, "TOPIC_ID_INVALID")) && cfg.Telegram.AutoRecreateTopics {
-							logger.Info("topic was deleted, recreating", zap.Int64("old_thread_id", threadId))
-							_ = database.ChatThreadDropPairByTg(cfg.Telegram.TargetChatID, threadId)
-
-							var newThreadId int64
-							var recreateErr error
-							if v.Info.IsGroup {
-								newThreadId, recreateErr = utils.TgGetOrMakeThreadFromWa(v.Info.Chat, cfg.Telegram.TargetChatID, utils.WaGetGroupName(v.Info.Chat))
-							} else {
-								target := v.Info.Chat.ToNonAD()
-								newThreadId, recreateErr = utils.TgGetOrMakeThreadFromWa(target, cfg.Telegram.TargetChatID, utils.WaGetTopicSubject(target))
-							}
-							if recreateErr != nil {
-								logger.Error("failed to recreate topic", zap.Error(recreateErr))
-								return
-							} else {
-								logger.Info("topic recreated, retrying", zap.Int64("new_thread_id", newThreadId))
-								// Clear replyToMsgId since the original message was in the deleted topic
-								sentMsg, err = tgBot.SendMessage(cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
-									ReplyParameters: &gotgbot.ReplyParameters{},
-									MessageThreadId: newThreadId,
-								})
-								if err != nil {
-									logger.Error("failed to resend telegram message after topic recreation", zap.Error(err))
-									return
-								}
-							}
-						}
-						if err != nil {
-							logger.Error("failed to send telegram message", zap.Error(err))
-							return
-						}
+						logger.Error("failed to resend telegram message after topic recreation", zap.Error(err))
+						return
 					}
-					if sentMsg != nil && sentMsg.MessageId != 0 {
-						database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
-							cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
-					}
-					return
 				}
+			} else {
+				logger.Error("failed to send telegram message", zap.Error(err))
+				return
+			}
+		}
+		if sentMsg != nil && sentMsg.MessageId != 0 {
+			database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
+				cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
+		}
+	}
 }
 
 func UndecryptableMessageEventHandler(v *events.UndecryptableMessage) {
