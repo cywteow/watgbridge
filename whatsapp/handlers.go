@@ -1284,6 +1284,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		if err != nil {
 			// Check if topic was deleted and try to recreate
 			errStr := err.Error()
+			logger.Info("failed to send message, checking if it's due to deleted topic", zap.String("error", errStr	))
 			if (strings.Contains(errStr, "message thread not found") || strings.Contains(errStr, "MESSAGE_THREAD_NOT_FOUND") || strings.Contains(errStr, "TOPIC_DELETED") || strings.Contains(errStr, "TOPIC_ID_INVALID")) {
 				logger.Info("topic was deleted, recreating", zap.Int64("old_thread_id", threadId))
 				_ = database.ChatThreadDropPairByTg(cfg.Telegram.TargetChatID, threadId)
