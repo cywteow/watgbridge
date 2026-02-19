@@ -35,19 +35,32 @@ type waTgBridgeCommand struct {
 var commands = []waTgBridgeCommand{}
 
 func AddTelegramHandlers() {
-	       // Handler for deleted forum topics (threads)
-	       dispatcher.AddHandlerToGroup(handlers.NewForumTopicDeleted(
-		       func(b *gotgbot.Bot, c *ext.Context, e *gotgbot.ForumTopicDeleted) error {
-			       // Log or handle the deleted topic event
-			       // Example: Remove mapping from database if needed
-			       tgChatId := c.EffectiveChat.Id
-			       tgThreadId := e.MessageThreadId
-			       // Remove the mapping from the database
-			       _ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
-			       // Optionally log or notify
-			       state.State.Logger.Infof("Forum topic deleted: chat_id=%d, thread_id=%d", tgChatId, tgThreadId)
-			       return nil
-		       }), DispatcherForwardHandlerGroup)
+	var (
+		cfg        = state.State.Config
+		dispatcher = state.State.TelegramDispatcher
+	)
+
+	// 1. Correct Handler for deleted forum topics (threads)
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(
+		func(msg *gotgbot.Message) bool {
+			// Filter: only process if the message indicates a deleted forum topic
+			return msg.ForumTopicDeleted != nil
+		},
+		func(b *gotgbot.Bot, c *ext.Context) error {
+			tgChatId := c.EffectiveChat.Id
+			tgThreadId := c.EffectiveMessage.MessageThreadId
+
+			// Remove the mapping from the database
+			_ = database.ChatThreadDropPairByTg(tgChatId, tgThreadId)
+
+			// 2. Fix Logger: Use .Info with zap fields or SugaredLogger
+			// Assuming State.Logger is a *zap.Logger
+			state.State.Logger.Info("Forum topic deleted",
+				zap.Int64("chat_id", tgChatId),
+				zap.Int64("thread_id", tgThreadId),
+			)
+			return nil
+		}), DispatcherForwardHandlerGroup)
 	var (
 		cfg        = state.State.Config
 		dispatcher = state.State.TelegramDispatcher
