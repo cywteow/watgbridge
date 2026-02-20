@@ -61,6 +61,18 @@ func MsgIdGetWaFromTg(tgChatId, tgMsgId, tgThreadId int64) (msgId, participantId
 	return bridgePair.ID, bridgePair.ParticipantId, bridgePair.WaChatId, res.Error
 }
 
+// MsgIdGetWaFromTgByMsgId looks up a WhatsApp message pair by Telegram chat+message ID only,
+// ignoring thread ID. Used for reactions where thread ID is not available.
+func MsgIdGetWaFromTgByMsgId(tgChatId, tgMsgId int64) (msgId, participantId, chatId string, err error) {
+
+	db := state.State.Database
+
+	var bridgePair MsgIdPair
+	res := db.Where("tg_chat_id = ? AND tg_msg_id = ?", tgChatId, tgMsgId).First(&bridgePair)
+
+	return bridgePair.ID, bridgePair.ParticipantId, bridgePair.WaChatId, res.Error
+}
+
 func MsgIdGetUnread(waChatId string) (map[string]([]string), error) {
 
 	db := state.State.Database

@@ -23,8 +23,11 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
+	waCommon "go.mau.fi/whatsmeow/proto/waCommon"
+	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
 	waTypes "go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
+	"google.golang.org/protobuf/proto"
 )
 
 type waTgBridgeCommand struct {
@@ -46,110 +49,6 @@ func AddTelegramHandlers() {
 			return msg.Chat.Id == cfg.Telegram.TargetChatID
 		}, BridgeTelegramToWhatsAppHandler,
 	), DispatcherForwardHandlerGroup)
-
-	// Handler for Telegram reactions
-	dispatcher.AddHandlerToGroup(handlers.NewUpdate(
-		func(update *gotgbot.Update) bool {
-			return update.Message != nil && update.Message.Reactions != nil && update.Message.Chat.Id == cfg.Telegram.TargetChatID
-		}, TelegramReactionToWhatsAppHandler,
-	), DispatcherForwardHandlerGroup)
-}
-
-// Handler function to forward Telegram reactions to WhatsApp
-func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
-	msg := c.EffectiveMessage
-	if msg == nil || msg.Reactions == nil {
-		return nil
-	}
-	// Only handle reactions in the target chat
-	if msg.Chat.Id != state.State.Config.Telegram.TargetChatID {
-		return nil
-	}
-
-	// Find WhatsApp message mapping
-	stanzaID, participantID, waChatID, err := database.MsgIdGetWaFromTg(msg.Chat.Id, msg.MessageId, msg.MessageThreadId)
-	if err != nil || stanzaID == "" || waChatID == "" {
-		return nil // No mapping found
-	}
-
-	waChatJID, _ := utils.WaParseJID(waChatID)
-
-	// WhatsApp only supports one emoji reaction per message
-	// Get the latest reaction
-	var emoji string
-	if len(msg.Reactions) > 0 {
-		emoji = msg.Reactions[len(msg.Reactions)-1].Emoji
-	}
-	if emoji == "" {
-		return nil
-	}
-
-	// Send reaction to WhatsApp
-	waClient := state.State.WhatsAppClient
-	_, err = waClient.SendMessage(context.Background(), waChatJID, &waTypes.Message{
-		ReactionMessage: &waTypes.ReactionMessage{
-			Text: &emoji,
-			SenderTimestampMS: time.Now().UnixMilli(),
-			Key: &waTypes.MessageKey{
-				RemoteJID: waChatJID.String(),
-				FromMe: false,
-				ID: stanzaID,
-			},
-		},
-	})
-	if err != nil {
-		return utils.TgReplyWithErrorByContext(b, c, "Failed to send reaction to WhatsApp", err)
-	}
-	return nil
-}
-
-// Handler function to forward Telegram reactions to WhatsApp
-func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
-	msg := c.EffectiveMessage
-	if msg == nil || msg.Reactions == nil {
-		return nil
-	}
-	// Only handle reactions in the target chat
-	if msg.Chat.Id != state.State.Config.Telegram.TargetChatID {
-		return nil
-	}
-
-	// Find WhatsApp message mapping
-	stanzaID, participantID, waChatID, err := database.MsgIdGetWaFromTg(msg.Chat.Id, msg.MessageId, msg.MessageThreadId)
-	if err != nil || stanzaID == "" || waChatID == "" {
-		return nil // No mapping found
-	}
-
-	waChatJID, _ := utils.WaParseJID(waChatID)
-
-	// WhatsApp only supports one emoji reaction per message
-	// Get the latest reaction
-	var emoji string
-	if len(msg.Reactions) > 0 {
-		emoji = msg.Reactions[len(msg.Reactions)-1].Emoji
-	}
-	if emoji == "" {
-		return nil
-	}
-
-	// Send reaction to WhatsApp
-	waClient := state.State.WhatsAppClient
-	_, err = waClient.SendMessage(context.Background(), waChatJID, &waTypes.Message{
-		ReactionMessage: &waTypes.ReactionMessage{
-			Text: &emoji,
-			SenderTimestampMS: time.Now().UnixMilli(),
-			Key: &waTypes.MessageKey{
-				RemoteJID: waChatJID.String(),
-				FromMe: false,
-				ID: stanzaID,
-			},
-		},
-	})
-	if err != nil {
-		return utils.TgReplyWithErrorByContext(b, c, "Failed to send reaction to WhatsApp", err)
-	}
-	return nil
-}
 
 	commands = append(commands,
 		waTgBridgeCommand{
@@ -242,6 +141,57 @@ func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 		func(cq *gotgbot.CallbackQuery) bool {
 			return strings.HasPrefix(cq.Data, "revoke")
 		}, RevokeCallbackHandler), DispatcherCallbackHandlerGroup)
+
+	// Handler for Telegram message reactions → forward to WhatsApp
+	dispatcher.AddHandlerToGroup(handlers.NewUpdate(
+		func(u *gotgbot.Update) bool {
+			return u.MessageReaction != nil && u.MessageReaction.Chat.Id == cfg.Telegram.TargetChatID
+		}, TelegramReactionToWhatsAppHandler,
+	), DispatcherForwardHandlerGroup)
+}
+
+// TelegramReactionToWhatsAppHandler forwards a Telegram emoji reaction to the corresponding WhatsApp message.
+func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	reaction := c.Update.MessageReaction
+	if reaction == nil {
+		return nil
+	}
+
+	// Determine the emoji: empty string removes a reaction on WhatsApp
+	var emoji string
+	for _, r := range reaction.NewReaction {
+		if emojiReaction, ok := r.(gotgbot.ReactionTypeEmoji); ok {
+			emoji = emojiReaction.Emoji
+			break
+		}
+	}
+
+	// Look up the WhatsApp message ID for the Telegram message that was reacted to.
+	// MessageReaction updates don't include thread_id so we look up by chat+msg only.
+	stanzaID, _, waChatID, err := database.MsgIdGetWaFromTgByMsgId(reaction.Chat.Id, reaction.MessageId)
+	if err != nil || stanzaID == "" || waChatID == "" {
+		return nil // No mapping found, silently ignore
+	}
+
+	waChatJID, _ := utils.WaParseJID(waChatID)
+
+	waClient := state.State.WhatsAppClient
+	_, err = waClient.SendMessage(context.Background(), waChatJID, &waE2E.Message{
+		ReactionMessage: &waE2E.ReactionMessage{
+			Text:              proto.String(emoji),
+			SenderTimestampMS: proto.Int64(time.Now().UnixMilli()),
+			Key: &waCommon.MessageKey{
+				RemoteJID: proto.String(waChatJID.String()),
+				FromMe:    proto.Bool(false),
+				ID:        proto.String(stanzaID),
+			},
+		},
+	})
+	return err
 }
 
 func BridgeTelegramToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
