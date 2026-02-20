@@ -53,6 +53,8 @@ func AddTelegramHandlers() {
 			return update.Message != nil && update.Message.Reactions != nil && update.Message.Chat.Id == cfg.Telegram.TargetChatID
 		}, TelegramReactionToWhatsAppHandler,
 	), DispatcherForwardHandlerGroup)
+}
+
 // Handler function to forward Telegram reactions to WhatsApp
 func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 	msg := c.EffectiveMessage
