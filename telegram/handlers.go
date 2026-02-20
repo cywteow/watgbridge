@@ -27,6 +27,7 @@ import (
 	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
 	waTypes "go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -165,12 +166,19 @@ func (h telegramReactionHandler) Name() string {
 
 // TelegramReactionToWhatsAppHandler forwards a Telegram emoji reaction to the corresponding WhatsApp message.
 func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
-	if !utils.TgUpdateIsAuthorized(b, c) {
+	reaction := c.Update.MessageReaction
+	if reaction == nil {
 		return nil
 	}
 
-	reaction := c.Update.MessageReaction
-	if reaction == nil {
+	// Only forward reactions from authorized users (owner or sudo users)
+	cfg := state.State.Config
+	isAuthorized := false
+	if reaction.User != nil {
+		isAuthorized = reaction.User.Id == cfg.Telegram.OwnerID ||
+			slices.Contains(cfg.Telegram.SudoUsersID, reaction.User.Id)
+	}
+	if !isAuthorized {
 		return nil
 	}
 

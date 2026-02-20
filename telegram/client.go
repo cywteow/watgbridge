@@ -64,6 +64,14 @@ func NewTelegramClient() error {
 		DropPendingUpdates: true,
 		GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
 			Timeout: 9,
+			AllowedUpdates: []string{
+				"message",
+				"edited_message",
+				"channel_post",
+				"edited_channel_post",
+				"callback_query",
+				"message_reaction",
+			},
 			RequestOpts: &gotgbot.RequestOpts{
 				Timeout: 10 * time.Second,
 			},
