@@ -143,11 +143,24 @@ func AddTelegramHandlers() {
 		}, RevokeCallbackHandler), DispatcherCallbackHandlerGroup)
 
 	// Handler for Telegram message reactions → forward to WhatsApp
-	dispatcher.AddHandlerToGroup(handlers.NewUpdate(
-		func(u *gotgbot.Update) bool {
-			return u.MessageReaction != nil && u.MessageReaction.Chat.Id == cfg.Telegram.TargetChatID
-		}, TelegramReactionToWhatsAppHandler,
-	), DispatcherForwardHandlerGroup)
+	dispatcher.AddHandlerToGroup(telegramReactionHandler{targetChatID: cfg.Telegram.TargetChatID}, DispatcherForwardHandlerGroup)
+}
+
+// telegramReactionHandler implements ext.Handler for MessageReaction updates.
+type telegramReactionHandler struct {
+	targetChatID int64
+}
+
+func (h telegramReactionHandler) CheckUpdate(b *gotgbot.Bot, ctx *ext.Context) bool {
+	return ctx.Update.MessageReaction != nil && ctx.Update.MessageReaction.Chat.Id == h.targetChatID
+}
+
+func (h telegramReactionHandler) HandleUpdate(b *gotgbot.Bot, ctx *ext.Context) error {
+	return TelegramReactionToWhatsAppHandler(b, ctx)
+}
+
+func (h telegramReactionHandler) Name() string {
+	return "TelegramReactionToWhatsAppHandler"
 }
 
 // TelegramReactionToWhatsAppHandler forwards a Telegram emoji reaction to the corresponding WhatsApp message.
