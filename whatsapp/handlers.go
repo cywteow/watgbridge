@@ -1032,8 +1032,15 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 			   return
 		   }
 
-		   // Create or get Telegram topic/thread using the contact's display name
-		   threadId, _ = utils.TgGetOrMakeThreadFromWa_String(card.PreferredValue(goVCard.FieldTelephone), cfg.Telegram.TargetChatID, contactMsg.GetDisplayName())
+		   // Normalize the vCard phone number to canonical JID format (e.g. "+65 8399 0358" → "6583990358@s.whatsapp.net")
+		   // so it matches the format used everywhere else in chat_thread_pairs.
+		   rawPhone := card.PreferredValue(goVCard.FieldTelephone)
+		   normalizedPhone := strings.NewReplacer("+", "", " ", "", "-", "").Replace(rawPhone) + "@s.whatsapp.net"
+		   contactJID, _ := utils.WaParseJID(normalizedPhone)
+		   // Use WaGetContactName for the topic name so it reflects the saved contact name.
+		   // TgGetOrMakeThreadFromWa_String checks DB first; only creates a new topic if none exists.
+		   contactTopicName := utils.WaGetContactName(contactJID)
+		   threadId, _ = utils.TgGetOrMakeThreadFromWa_String(normalizedPhone, cfg.Telegram.TargetChatID, contactTopicName)
 
 		   sentMsg, _ := tgBot.SendContact(cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
 			   &gotgbot.SendContactOpts{
