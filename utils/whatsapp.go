@@ -247,7 +247,6 @@ func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgI
 }
 
 func WaSendText(chat types.JID, text, stanzaId, participantId string, quotedMsg *waE2E.Message, isReply bool) (whatsmeow.SendResponse, error) {
-	waClient := state.State.WhatsAppClient
 
 	msgToSend := &waE2E.Message{}
 	if isReply {
