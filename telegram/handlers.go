@@ -201,7 +201,6 @@ func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 	waChatJID, _ := utils.WaParseJID(waChatID)
 
-	waClient := state.State.WhatsAppClient
 	_, err = queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
 		ReactionMessage: &waE2E.ReactionMessage{
 			Text:              proto.String(emoji),
