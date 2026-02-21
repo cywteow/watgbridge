@@ -96,6 +96,10 @@ func isTopicNotFound(err error) bool {
 		return false
 	}
 	msg := strings.ToUpper(err.Error())
+	logger := state.State.Logger
+	logger.Info("[scheduler] probing Telegram topic existence resulted in error",
+		zap.String("error", msg),
+	)
 	return strings.Contains(msg, "TOPIC_NOT_FOUND") ||
 		strings.Contains(msg, "MESSAGE_THREAD_INVALID")
 }
