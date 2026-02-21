@@ -88,6 +88,5 @@ func isTopicNotFound(err error) bool {
 		return false
 	}
 	msg := strings.ToUpper(err.Error())
-	logger := state.State.Logger
 	return strings.Contains(msg, "TOPIC_NOT_FOUND") || strings.Contains(msg, "TOPIC_ID_INVALID") || strings.Contains(msg, "MESSAGE_THREAD_INVALID")
 }
