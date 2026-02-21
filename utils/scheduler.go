@@ -25,11 +25,13 @@ func cleanupDeletedTopics() {
 	cfg := state.State.Config
 	bot := state.State.TelegramBot
 	logger := state.State.Logger
-
+	logger.Info("[scheduler] running topic cleanup job")
 	if bot == nil {
 		return
 	}
-
+	logger.Info("[scheduler] fetching chat_thread_pairs for topic cleanup",
+		zap.Int64("tg_chat_id", cfg.Telegram.TargetChatID),
+	)
 	tgChatId := cfg.Telegram.TargetChatID
 
 	pairs, err := database.ChatThreadGetAllPairs(tgChatId)
