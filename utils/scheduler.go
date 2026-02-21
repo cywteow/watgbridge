@@ -49,12 +49,18 @@ func cleanupDeletedTopics() {
 		if threadId <= 1 {
 			continue
 		}
+		logger.Info("[scheduler] checking Telegram topic existence",
+			zap.Int64("tg_thread_id", threadId),
+		)
 
 		// Probe Telegram: try to reopen the forum topic.
 		// - nil error or "TOPIC_NOT_MODIFIED" (already open) → topic still exists.
 		// - error containing "TOPIC_NOT_FOUND"                → topic has been deleted.
 		_, probeErr := bot.ReopenForumTopic(tgChatId, threadId, nil)
 		if probeErr == nil || !isTopicNotFound(probeErr) {
+			logger.Info("[scheduler] Telegram topic exists, no cleanup needed",
+				zap.Int64("tg_thread_id", threadId),
+			)
 			// Topic is still alive; nothing to do.
 			continue
 		}
