@@ -425,13 +425,26 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 				return
 			}
 		} else if v.Info.IsGroup {
-			threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.Chat, cfg.Telegram.TargetChatID,
-				utils.WaGetGroupName(v.Info.Chat))
-			if err != nil {
-				utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
-					v.Info.Chat.String()), err)
-				return
-			}
+			   threadId, err = utils.TgGetOrMakeThreadFromWa(v.Info.Chat, cfg.Telegram.TargetChatID,
+				   utils.WaGetGroupName(v.Info.Chat))
+			   if err != nil {
+				   utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
+					   v.Info.Chat.String()), err)
+				   return
+			   }
+
+			   // Fetch and send WhatsApp group profile picture to the new topic
+			   waClient := state.State.WhatsAppClient
+			   pictureInfo, err := waClient.GetProfilePictureInfo(v.Info.Chat, &whatsmeow.GetProfilePictureParams{Preview: false})
+			   if err == nil && pictureInfo != nil && pictureInfo.URL != "" {
+				   newPictureBytes, err := utils.DownloadFileBytesByURL(pictureInfo.URL)
+				   if err == nil {
+					   _, _ = queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
+						   MessageThreadId: threadId,
+						   Caption:         "WhatsApp group profile picture",
+					   })
+				   }
+			   }
 		} else {
 			target_chat_jid := v.Info.Chat.ToNonAD()
 
@@ -1041,6 +1054,19 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		   // TgGetOrMakeThreadFromWa_String checks DB first; only creates a new topic if none exists.
 		   contactTopicName := utils.WaGetContactName(contactJID)
 		   threadId, _ = utils.TgGetOrMakeThreadFromWa_String(normalizedPhone, cfg.Telegram.TargetChatID, contactTopicName)
+
+		   // Fetch and send WhatsApp profile picture to the new topic
+		   waClient := state.State.WhatsAppClient
+		   pictureInfo, err := waClient.GetProfilePictureInfo(contactJID, &whatsmeow.GetProfilePictureParams{Preview: false})
+		   if err == nil && pictureInfo != nil && pictureInfo.URL != "" {
+			   newPictureBytes, err := utils.DownloadFileBytesByURL(pictureInfo.URL)
+			   if err == nil {
+				   _, _ = queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
+					   MessageThreadId: threadId,
+					   Caption:         "WhatsApp profile picture",
+				   })
+			   }
+		   }
 
 		   sentMsg, _ := queue.TgSendContact(tgBot, cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
 			   &gotgbot.SendContactOpts{
