@@ -98,8 +98,9 @@ func TgRun[T any](fn func() (T, error)) (T, error) {
 // ---------------------------------------------------------------------------
 
 // TgReopenForumTopic enqueues a Telegram ReopenForumTopic call through the rate-limited queue.
-func TgReopenForumTopic(b *gotgbot.Bot, chatId int64, threadId int64, opts *gotgbot.ReopenForumTopicOpts) (*gotgbot.Message, error) {
-	return TgRun(func() (*gotgbot.Message, error) { return b.ReopenForumTopic(chatId, threadId, opts) })
+// Corrected: returns (bool, error) to match gotgbot.Bot.ReopenForumTopic
+func TgReopenForumTopic(b *gotgbot.Bot, chatId int64, threadId int64, opts *gotgbot.ReopenForumTopicOpts) (bool, error) {
+	return TgRun(func() (bool, error) { return b.ReopenForumTopic(chatId, threadId, opts) })
 }
 
 func TgSendMessage(b *gotgbot.Bot, chatId int64, text string, opts *gotgbot.SendMessageOpts) (*gotgbot.Message, error) {
