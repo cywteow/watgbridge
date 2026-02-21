@@ -50,7 +50,7 @@ func cleanupDeletedTopics() {
 
 		       // Probe Telegram: try to reopen the forum topic using the queue wrapper.
 		       // - nil error or "TOPIC_NOT_MODIFIED" (already open) → topic still exists.
-		       // - error containing "TOPIC_NOT_FOUND"                → topic has been deleted.
+		       // - error containing "TOPIC_NOT_FOUND", "TOPIC_ID_INVALID", "MESSAGE_THREAD_INVALID" → topic has been deleted.
 		       _, probeErr := queue.TgReopenForumTopic(bot, tgChatId, threadId, nil)
 		       if probeErr == nil || !isTopicNotFound(probeErr) {
 			       // Topic is still alive; nothing to do.
