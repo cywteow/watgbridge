@@ -202,6 +202,9 @@ func main() {
 		}
 	})
 
+	utils.StartTopicCleanupScheduler(s)
+	s.StartAsync()
+
 	state.State.WhatsAppClient.AddEventHandler(whatsapp.WhatsAppEventHandler)
 	telegram.AddTelegramHandlers()
 	modules.LoadModuleHandlers()

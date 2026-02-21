@@ -119,6 +119,14 @@ func MsgIdDeletePair(tgChatId, tgMsgId int64) error {
 	return res.Error
 }
 
+func MsgIdDeletePairsByThreadId(tgChatId, tgThreadId int64) error {
+
+	db := state.State.Database
+	res := db.Where("tg_chat_id = ? AND tg_thread_id = ?", tgChatId, tgThreadId).Delete(&MsgIdPair{})
+
+	return res.Error
+}
+
 func MsgIdDropAllPairs() error {
 
 	db := state.State.Database
