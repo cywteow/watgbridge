@@ -15,7 +15,6 @@ import (
 	"watgbridge/database"
 	"watgbridge/queue"
 	"watgbridge/state"
-	"watgbridge/utils"
 	profilepic "watgbridge/profilepic"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
