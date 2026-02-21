@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"watgbridge/database"
+	"watgbridge/queue"
 	"watgbridge/state"
 	"watgbridge/utils"
 
@@ -201,7 +202,7 @@ func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 	waChatJID, _ := utils.WaParseJID(waChatID)
 
 	waClient := state.State.WhatsAppClient
-	_, err = waClient.SendMessage(context.Background(), waChatJID, &waE2E.Message{
+	_, err = queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
 		ReactionMessage: &waE2E.ReactionMessage{
 			Text:              proto.String(emoji),
 			SenderTimestampMS: proto.Int64(time.Now().UnixMilli()),
@@ -759,7 +760,7 @@ func GetProfilePictureHandler(b *gotgbot.Bot, c *ext.Context) error {
 	if c.EffectiveMessage.IsTopicMessage {
 		opts.MessageThreadId = c.EffectiveMessage.MessageThreadId
 	}
-	_, err = b.SendPhoto(c.EffectiveChat.Id, &gotgbot.FileReader{Data: bytes.NewReader(imgBytes)}, opts)
+	_, err = queue.TgSendPhoto(b, c.EffectiveChat.Id, &gotgbot.FileReader{Data: bytes.NewReader(imgBytes)}, opts)
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "Failed to send photo", err)
 	}
@@ -875,7 +876,7 @@ func RevokeCommandHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 	chatJid, _ := utils.WaParseJID(waChatId)
 	revokeMessage := waClient.BuildRevoke(chatJid, waTypes.EmptyJID, waMsgId)
-	_, err = waClient.SendMessage(context.Background(), chatJid, revokeMessage)
+	_, err = queue.WaSend(context.Background(), chatJid, revokeMessage)
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "failed to revoke message", err)
 	}
@@ -930,7 +931,7 @@ func RevokeCallbackHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 			chatJid, _ := utils.WaParseJID(data[2])
 			revokeMesssage := waClient.BuildRevoke(chatJid, waTypes.EmptyJID, data[1])
-			_, err := waClient.SendMessage(context.Background(), chatJid, revokeMesssage)
+			_, err := queue.WaSend(context.Background(), chatJid, revokeMesssage)
 			if err != nil {
 				_, err = cq.Answer(b, &gotgbot.AnswerCallbackQueryOpts{
 					Text:      "Failed to send revoke message : " + err.Error(),

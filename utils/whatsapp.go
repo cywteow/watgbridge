@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"watgbridge/database"
+	"watgbridge/queue"
 	"watgbridge/state"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
@@ -215,7 +216,7 @@ func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgI
 		mentioned = append(mentioned, participant.JID.String())
 	}
 
-	_, err = waClient.SendMessage(context.Background(), group, &waE2E.Message{
+	_, err = queue.WaSend(context.Background(), group, &waE2E.Message{
 		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
 			Text: proto.String(replyText),
 			ContextInfo: &waE2E.ContextInfo{
@@ -262,5 +263,5 @@ func WaSendText(chat types.JID, text, stanzaId, participantId string, quotedMsg 
 		msgToSend.Conversation = proto.String(text)
 	}
 
-	return waClient.SendMessage(context.Background(), chat, msgToSend)
+	return queue.WaSend(context.Background(), chat, msgToSend)
 }

@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"watgbridge/database"
+	"watgbridge/queue"
 	"watgbridge/state"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -129,12 +130,12 @@ func TgReplyTextByContext(b *gotgbot.Bot, c *ext.Context, text string, buttons *
 		sendOpts.DisableNotification = true
 	}
 
-	msg, err := b.SendMessage(c.EffectiveChat.Id, text, sendOpts)
+	msg, err := queue.TgSendMessage(b, c.EffectiveChat.Id, text, sendOpts)
 	return msg, err
 }
 
 func TgSendTextById(b *gotgbot.Bot, chatId int64, threadId int64, text string) error {
-	_, err := b.SendMessage(chatId, text, &gotgbot.SendMessageOpts{
+	_, err := queue.TgSendMessage(b, chatId, text, &gotgbot.SendMessageOpts{
 		MessageThreadId: threadId})
 	return err
 }
@@ -180,14 +181,14 @@ func TgReplyWithErrorByContext(b *gotgbot.Bot, c *ext.Context, eMessage string, 
 	if c.EffectiveMessage.IsTopicMessage {
 		sendOpts.MessageThreadId = c.EffectiveMessage.MessageThreadId
 	}
-	_, err := b.SendMessage(c.EffectiveChat.Id,
+	_, err := queue.TgSendMessage(b, c.EffectiveChat.Id,
 		fmt.Sprintf("%s:\n\n<code>%s</code>", eMessage, html.EscapeString(e.Error())),
 		sendOpts)
 	return err
 }
 
 func TgSendErrorById(b *gotgbot.Bot, chatId, threadId int64, eMessage string, e error) error {
-	_, err := b.SendMessage(
+	_, err := queue.TgSendMessage(b, 
 		chatId,
 		fmt.Sprintf("%s:\n\n<code>%s</code>", eMessage, html.EscapeString(e.Error())),
 		&gotgbot.SendMessageOpts{
@@ -345,7 +346,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.ImageMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send image to WhatsApp", err)
 		}
@@ -414,7 +415,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.VideoMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send video to WhatsApp", err)
 		}
@@ -480,7 +481,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.PtvMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send video note to WhatsApp", err)
 		}
@@ -549,7 +550,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.VideoMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send animation to WhatsApp", err)
 		}
@@ -613,7 +614,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.AudioMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send audio to WhatsApp", err)
 		}
@@ -677,7 +678,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.AudioMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send voice to WhatsApp", err)
 		}
@@ -742,7 +743,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.DocumentMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send document to WhatsApp", err)
 		}
@@ -847,7 +848,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.StickerMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send sticker to WhatsApp", err)
 		}
@@ -910,7 +911,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.ContactMessage.ContextInfo.Expiration = &ephemeralTimer
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send sticker to WhatsApp", err)
 		}
@@ -964,7 +965,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			}
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send sticker to WhatsApp", err)
 		}
@@ -980,7 +981,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 	} else if msgToForward.Text != "" {
 
 		if emojis := gomoji.CollectAll(msgToForward.Text); isReply && len(emojis) == 1 && gomoji.RemoveEmojis(msgToForward.Text) == "" {
-			_, err := waClient.SendMessage(context.Background(), waChatJID, &waE2E.Message{
+			_, err := queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
 				ReactionMessage: &waE2E.ReactionMessage{
 					Text:              proto.String(msgToForward.Text),
 					SenderTimestampMS: proto.Int64(time.Now().UnixMilli()),
@@ -1028,7 +1029,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			msgToSend.Conversation = proto.String(msgToForward.Text)
 		}
 
-		sentMsg, err := waClient.SendMessage(context.Background(), waChatJID, msgToSend)
+		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)
 		if err != nil {
 			return TgReplyWithErrorByContext(b, c, "Failed to send message to WhatsApp", err)
 		}
