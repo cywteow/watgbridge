@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"watgbridge/database"
 	"watgbridge/queue"
 	"watgbridge/state"
+	"watgbridge/utils"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
