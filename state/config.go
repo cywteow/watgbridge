@@ -21,7 +21,7 @@ type Config struct {
 	UseGithHubBinaries bool   `yaml:"use_github_binaries"`
 	Architecture       string `yaml:"architecture"`
 
-	Telegram struct {
+	   Telegram struct {
 		BotToken            string  `yaml:"bot_token"`
 		APIURL              string  `yaml:"api_url"`
 		SudoUsersID         []int64 `yaml:"sudo_users_id"`
@@ -38,39 +38,43 @@ type Config struct {
 		SkipStartupMessage  bool    `yaml:"skip_startup_message"`
 		SpoilerViewOnce     bool    `yaml:"spoiler_as_viewonce"`
 		Reactions           bool    `yaml:"reactions"`
+		QueueEnabled        bool    `yaml:"queue_enabled"`
+		QueueIntervalMs     int     `yaml:"queue_interval_ms"`
 	} `yaml:"telegram"`
 
-	WhatsApp struct {
-		LoginDatabase struct {
-			Type string `yaml:"type"`
-			URL  string `yaml:"url"`
-		} `yaml:"login_database"`
-		StickerMetadata struct {
-			PackName   string `yaml:"pack_name"`
-			AuthorName string `yaml:"author_name"`
-		} `yaml:"sticker_metadata"`
-		SessionName                    string   `yaml:"session_name"`
-		TagAllAllowedGroups            []string `yaml:"tag_all_allowed_groups"`
-		IgnoreChats                    []string `yaml:"ignore_chats"`
-		StatusIgnoredChats             []string `yaml:"status_ignored_chats"`
-		SkipDocuments                  bool     `yaml:"skip_documents"`
-		SkipImages                     bool     `yaml:"skip_images"`
-		SkipGIFs                       bool     `yaml:"skip_gifs"`
-		SkipVideos                     bool     `yaml:"skip_videos"`
-		SkipVoiceNotes                 bool     `yaml:"skip_voice_notes"`
-		SkipAudios                     bool     `yaml:"skip_audios"`
-		SkipStatus                     bool     `yaml:"skip_status"`
-		SkipStickers                   bool     `yaml:"skip_stickers"`
-		SkipContacts                   bool     `yaml:"skip_contacts"`
-		SkipLocations                  bool     `yaml:"skip_locations"`
-		SkipProfilePictureUpdates      bool     `yaml:"skip_profile_picture_updates"`
-		SkipGroupSettingsUpdates       bool     `yaml:"skip_group_settings_updates"`
-		SkipChatDetails                bool     `yaml:"skip_chat_details"`
-		SendRevokedMessageUpdates      bool     `yaml:"send_revoked_message_updates"`
-		WhatsmeowDebugMode             bool     `yaml:"whatsmeow_debug_mode"`
-		SendMyMessagesFromOtherDevices bool     `yaml:"send_my_messages_from_other_devices"`
-		CreateThreadForInfoUpdates     bool     `yaml:"create_thread_for_info_updates"`
-	} `yaml:"whatsapp"`
+	   WhatsApp struct {
+		   LoginDatabase struct {
+			   Type string `yaml:"type"`
+			   URL  string `yaml:"url"`
+		   } `yaml:"login_database"`
+		   StickerMetadata struct {
+			   PackName   string `yaml:"pack_name"`
+			   AuthorName string `yaml:"author_name"`
+		   } `yaml:"sticker_metadata"`
+		   SessionName                    string   `yaml:"session_name"`
+		   TagAllAllowedGroups            []string `yaml:"tag_all_allowed_groups"`
+		   IgnoreChats                    []string `yaml:"ignore_chats"`
+		   StatusIgnoredChats             []string `yaml:"status_ignored_chats"`
+		   SkipDocuments                  bool     `yaml:"skip_documents"`
+		   SkipImages                     bool     `yaml:"skip_images"`
+		   SkipGIFs                       bool     `yaml:"skip_gifs"`
+		   SkipVideos                     bool     `yaml:"skip_videos"`
+		   SkipVoiceNotes                 bool     `yaml:"skip_voice_notes"`
+		   SkipAudios                     bool     `yaml:"skip_audios"`
+		   SkipStatus                     bool     `yaml:"skip_status"`
+		   SkipStickers                   bool     `yaml:"skip_stickers"`
+		   SkipContacts                   bool     `yaml:"skip_contacts"`
+		   SkipLocations                  bool     `yaml:"skip_locations"`
+		   SkipProfilePictureUpdates      bool     `yaml:"skip_profile_picture_updates"`
+		   SkipGroupSettingsUpdates       bool     `yaml:"skip_group_settings_updates"`
+		   SkipChatDetails                bool     `yaml:"skip_chat_details"`
+		   SendRevokedMessageUpdates      bool     `yaml:"send_revoked_message_updates"`
+		   WhatsmeowDebugMode             bool     `yaml:"whatsmeow_debug_mode"`
+		   SendMyMessagesFromOtherDevices bool     `yaml:"send_my_messages_from_other_devices"`
+		   CreateThreadForInfoUpdates     bool     `yaml:"create_thread_for_info_updates"`
+		   QueueEnabled                   bool     `yaml:"queue_enabled"`
+		   QueueIntervalMs                int      `yaml:"queue_interval_ms"`
+	   } `yaml:"whatsapp"`
 
 	Database map[string]string `yaml:"database"`
 }
@@ -78,7 +82,7 @@ type Config struct {
 func (cfg *Config) LoadConfig() error {
 	configFilePath := cfg.Path
 
-	if _, err := os.Stat(configFilePath); err != nil {
+			   	if _, err := os.Stat(configFilePath); err != nil {
 		return fmt.Errorf("error with config file path : %s", err)
 	}
 

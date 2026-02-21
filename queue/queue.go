@@ -15,12 +15,9 @@ import (
 	waTypes "go.mau.fi/whatsmeow/types"
 )
 
-const (
-	// WaInterval is the minimum delay between consecutive WhatsApp sends.
-	WaInterval = 500 * time.Millisecond
-	// TgInterval is the minimum delay between consecutive Telegram sends.
-	TgInterval = 250 * time.Millisecond
-	// QueueSize is the number of pending jobs each queue can buffer.
+var (
+	WaInterval = time.Duration(state.State.Config.WhatsApp.QueueIntervalMs) * time.Millisecond
+	TgInterval = time.Duration(state.State.Config.Telegram.QueueIntervalMs) * time.Millisecond
 	QueueSize = 1000
 )
 
@@ -36,15 +33,23 @@ func StartWorkers() {
 
 func waWorker() {
 	for job := range waJobCh {
-		job()
-		time.Sleep(WaInterval)
+		if state.State.Config.WhatsApp.QueueEnabled {
+			job()
+			time.Sleep(WaInterval)
+		} else {
+			job()
+		}
 	}
 }
 
 func tgWorker() {
 	for job := range tgJobCh {
-		job()
-		time.Sleep(TgInterval)
+		if state.State.Config.Telegram.QueueEnabled {
+			job()
+			time.Sleep(TgInterval)
+		} else {
+			job()
+		}
 	}
 }
 

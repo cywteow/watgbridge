@@ -107,6 +107,8 @@ func WaGetGroupName(jid types.JID) string {
 	return groupInfo.Name
 }
 
+// Order of precedence for contact name display: Full Name > Business Name > Push Name > First Name > Formatted Number
+// format of returned string will be: Name (FULL NUMBER) or (FULL NUMBER) if no name found
 func WaGetContactName(jid types.JID) string {
 	if jid.ToNonAD() == state.State.WhatsAppClient.Store.ID.ToNonAD() {
 		return "You"
@@ -118,10 +120,10 @@ func WaGetContactName(jid types.JID) string {
 	var (
 		pn           types.JID
 		displayUser  string // The user ID to display (resolved PN or original)
-		firstName    string
-		fullName     string
-		pushName     string
-		businessName string
+		firstName    string // First name from database
+		fullName     string // Name stored in WhatsApp contacts
+		pushName     string // The name that the contact has set for themselves in WhatsApp
+		businessName string // The business name if it's a business contact
 		found        bool
 		err          error
 	)
