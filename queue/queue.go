@@ -97,6 +97,11 @@ func TgRun[T any](fn func() (T, error)) (T, error) {
 // Typed convenience wrappers – call sites only change method prefix to queue.Tg
 // ---------------------------------------------------------------------------
 
+// TgReopenForumTopic enqueues a Telegram ReopenForumTopic call through the rate-limited queue.
+func TgReopenForumTopic(b *gotgbot.Bot, chatId int64, threadId int64, opts *gotgbot.ReopenForumTopicOpts) (*gotgbot.Message, error) {
+	return TgRun(func() (*gotgbot.Message, error) { return b.ReopenForumTopic(chatId, threadId, opts) })
+}
+
 func TgSendMessage(b *gotgbot.Bot, chatId int64, text string, opts *gotgbot.SendMessageOpts) (*gotgbot.Message, error) {
 	return TgRun(func() (*gotgbot.Message, error) { return b.SendMessage(chatId, text, opts) })
 }
