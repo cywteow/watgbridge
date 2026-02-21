@@ -16,7 +16,7 @@ import (
 	"watgbridge/queue"
 	"watgbridge/state"
 	"watgbridge/utils"
-	telegram "watgbridge/telegram"
+	profilepic "watgbridge/profilepic"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -71,7 +71,7 @@ func TgGetOrMakeThreadFromWa_String(waChatIdString string, tgChatId int64, threa
 		}
 		// Send profile picture here
 		jid, _ := waTypes.ParseJID(waChatIdString)
-		telegram.SendWaProfilePicToTopic(jid, newForum.MessageThreadId, "WhatsApp profile picture")
+		profilepic.SendWaProfilePicToTopic(jid, newForum.MessageThreadId, "WhatsApp profile picture")
 		return newForum.MessageThreadId, nil
 	}
 
