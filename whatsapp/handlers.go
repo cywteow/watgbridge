@@ -121,7 +121,6 @@ func MessageFromMeEventHandler(text string, v *events.Message, isEdited bool) {
 
 	// Get ID of the current chat
 	if text == ".id" {
-		waClient := state.State.WhatsAppClient
 
 		_, err := queue.WaSend(context.Background(), v.Info.Chat, &waE2E.Message{
 			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
