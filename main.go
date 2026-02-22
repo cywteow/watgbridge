@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -197,14 +196,8 @@ func main() {
 
 	s := gocron.NewScheduler(time.UTC)
 	s.TagsUnique()
-	_, _ = s.Every(1).Hour().Tag("foo").Do(func() {
-		contacts, err := state.State.WhatsAppClient.Store.Contacts.GetAllContacts(context.Background())
-		if err == nil {
-			_ = database.ContactNameBulkAddOrUpdate(contacts)
-		}
-	})
-
 	scheduler.StartTopicCleanupScheduler(s)
+	scheduler.StartMsgCleanUpScheduler(s)
 	s.StartAsync()
 
 	state.State.WhatsAppClient.AddEventHandler(whatsapp.WhatsAppEventHandler)

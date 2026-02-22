@@ -13,6 +13,7 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/appstate"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
@@ -144,10 +145,10 @@ func WaGetContactName(jid types.JID) string {
 		firstName, fullName, pushName, businessName, found, err = database.ContactNameGet(jid.User, jid.Server)
 	}
 
-	       // Always use full number in parentheses as suffix
-	       var suffix string
-	       suffix = fmt.Sprintf("(%s)", displayUser)
-	       prefix := ""
+	// Always use full number in parentheses as suffix
+	var suffix string
+	suffix = fmt.Sprintf("(%s)", displayUser)
+	prefix := ""
 
 	if err == nil && found {
 		if fullName != "" {
@@ -183,12 +184,12 @@ func WaGetContactName(jid types.JID) string {
 		return suffix
 	}
 
-	       // Construct final string: Name (FULL NUMBER)
-	       formattedName := name
-	       if suffix != "" {
-		       formattedName = formattedName + " " + suffix
-	       }
-	       return formattedName
+	// Construct final string: Name (FULL NUMBER)
+	formattedName := name
+	if suffix != "" {
+		formattedName = formattedName + " " + suffix
+	}
+	return formattedName
 }
 
 func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgIsFromMe bool) {
@@ -265,4 +266,21 @@ func WaSendText(chat types.JID, text, stanzaId, participantId string, quotedMsg 
 	}
 
 	return queue.WaSend(context.Background(), chat, msgToSend)
+}
+
+// WaSyncContacts fetches and updates WhatsApp contacts in the database.
+func WaSyncContacts() error {
+	var (
+		waClient = state.State.WhatsAppClient
+	)
+	err := waClient.FetchAppState(context.Background(), appstate.WAPatchCriticalUnblockLow, false, false)
+	if err != nil {
+		return err
+	}
+
+	contacts, err := waClient.Store.Contacts.GetAllContacts(context.Background())
+	if err == nil {
+		database.ContactNameBulkAddOrUpdate(contacts)
+	}
+	return err
 }

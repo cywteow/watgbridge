@@ -23,7 +23,6 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/appstate"
 	waCommon "go.mau.fi/whatsmeow/proto/waCommon"
 	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
 	waTypes "go.mau.fi/whatsmeow/types"
@@ -503,17 +502,9 @@ func SyncContactsHandler(b *gotgbot.Bot, c *ext.Context) error {
 	}
 
 	utils.TgReplyTextByContext(b, c, "Starting syncing contacts... may take some time", nil, false)
-
-	waClient := state.State.WhatsAppClient
-
-	err := waClient.FetchAppState(context.Background(), appstate.WAPatchCriticalUnblockLow, false, false)
+	err := utils.WaSyncContacts()
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "Failed to sync contacts", err)
-	}
-
-	contacts, err := waClient.Store.Contacts.GetAllContacts(context.Background())
-	if err == nil {
-		database.ContactNameBulkAddOrUpdate(contacts)
 	}
 
 	_, err = utils.TgReplyTextByContext(b, c, "Successfully synced the contact list", nil, false)

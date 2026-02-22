@@ -23,6 +23,32 @@ func StartTopicCleanupScheduler(s *gocron.Scheduler) {
 	_, _ = s.Every(intervalMins).Minutes().Tag("topic_cleanup").Do(cleanupDeletedTopics)
 }
 
+// StartMsgCleanUpScheduler registers a periodic cron job to clean up old messages.
+func StartMsgCleanUpScheduler(s *gocron.Scheduler) {
+	const intervalMins = 1440 // adjust as needed
+	_, _ = s.Every(intervalMins).Minutes().Tag("msg_cleanup").Do(CleanUpMsg)
+}
+
+// Clean up message that doesn't has a topic (thread) associated with it anymore, which means the topic has been deleted and the msg_id_pairs entry is orphaned. This can happen when a Telegram topic is deleted but the scheduler hasn't run yet to clean up the database, or if there was an error during cleanup.
+func CleanUpMsg() {
+	db := state.State.Database
+	// This query works for MySQL and PostgreSQL. For SQLite, the syntax is different.
+	sql := `DELETE a FROM msg_id_pairs AS a LEFT JOIN chat_thread_pairs AS b ON a.tg_thread_id = b.tg_thread_id WHERE b.tg_thread_id IS NULL;`
+	if db != nil {
+		result := db.Exec(sql)
+		logger := state.State.Logger
+		if result.Error != nil {
+			if logger != nil {
+				logger.Error("[scheduler] failed to clean up orphaned msg_id_pairs", zap.Error(result.Error))
+			}
+		} else {
+			if logger != nil {
+				logger.Info("[scheduler] cleaned up orphaned msg_id_pairs", zap.Int64("rows_affected", result.RowsAffected))
+			}
+		}
+	}
+}
+
 // cleanupDeletedTopics is the actual cleanup function executed by the scheduler.
 func cleanupDeletedTopics() {
 	cfg := state.State.Config
@@ -30,6 +56,11 @@ func cleanupDeletedTopics() {
 	logger := state.State.Logger
 	if bot == nil {
 		return
+	}
+
+	err := utils.WaSyncContacts()
+	if err != nil && logger != nil {
+		logger.Error("[scheduler] failed to sync WhatsApp contacts", zap.Error(err))
 	}
 
 	tgChatId := cfg.Telegram.TargetChatID
