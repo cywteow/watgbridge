@@ -58,8 +58,8 @@ func AddTelegramHandlers() {
 			"",
 		},
 		waTgBridgeCommand{
-			handlers.NewCommand("opentopic", StartPrivateChatHandler),
-			"Open a topic for a WhatsApp contact by phone number",
+			handlers.NewCommand("send", StartPrivateChatHandler),
+			"Start a new topic for a WhatsApp contact by phone number",
 		},
 		waTgBridgeCommand{
 			handlers.NewCommand("getwagroups", GetWhatsAppGroupsHandler),
@@ -114,8 +114,8 @@ func AddTelegramHandlers() {
 			"Update the names of the topics created",
 		},
 		waTgBridgeCommand{
-			handlers.NewCommand("send", SendToWhatsAppHandler),
-			"Send a message to WhatsApp",
+			handlers.NewCommand("forward", SendToWhatsAppHandler),
+			"Forward a message to WhatsApp",
 		},
 		waTgBridgeCommand{
 			handlers.NewCommand("help", HelpCommandHandler),
@@ -335,7 +335,7 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return nil
 	}
 
-	usageString := "Usage: <code>/opentopic <phone_number></code>\nExample: <code>/opentopic 6581630123</code>"
+	usageString := "Usage: <code>/send <phone_number></code>\nExample: <code>/send 6581630123</code>"
 	args := c.Args()
 	if len(args) <= 1 {
 		_, err := utils.TgReplyTextByContext(b, c, usageString, nil, false)
@@ -856,8 +856,8 @@ func SendToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return nil
 	}
 
-	usageString := "Usage : Reply to a message, <code>" + html.EscapeString("/send <target_id>") + "</code>\n"
-	usageString += "Example : <code>/send 911234567890</code>"
+	usageString := "Usage : Reply to a message, <code>" + html.EscapeString("/forward <target_id>") + "</code>\n"
+	usageString += "Example : <code>/forward 911234567890</code>"
 
 	args := c.Args()
 	if len(args) <= 1 || c.EffectiveMessage.ReplyToMessage == nil || c.EffectiveMessage.ReplyToMessage.ForumTopicCreated != nil {
