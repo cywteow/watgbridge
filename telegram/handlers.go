@@ -803,33 +803,13 @@ func SyncTopicNamesHandler(b *gotgbot.Bot, c *ext.Context) error {
 	if !utils.TgUpdateIsAuthorized(b, c) {
 		return nil
 	}
-
-	chatThreadPairs, err := database.ChatThreadGetAllPairs(c.EffectiveChat.Id)
+	groupID := c.EffectiveChat.Id
+	chatThreadPairs, err := database.ChatThreadGetAllPairs(groupID)
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "failed to retreive chat thread pairs from database", err)
 	}
 
-	for _, pair := range chatThreadPairs {
-		var (
-			waChatId   = pair.ID
-			tgThreadId = pair.TgThreadId
-		)
-
-		if waChatId == "status@broadcast" || waChatId == "calls" || waChatId == "mentions" {
-			continue
-		}
-		waChatJid, _ := utils.WaParseJID(waChatId)
-
-		var newName string
-		if waChatJid.Server == waTypes.GroupServer {
-			newName = utils.WaGetGroupName(waChatJid)
-		} else {
-			newName = utils.WaGetContactName(waChatJid)
-		}
-
-		utils.TgEditForumTopicName(b, c.EffectiveChat.Id, tgThreadId, newName)
-		time.Sleep(5 * time.Second)
-	}
+	utils.SyncTopicNameByChatThreadPairs(b, groupID, chatThreadPairs)
 
 	_, err = c.EffectiveMessage.Reply(b, "Successfully synced topic names", nil)
 	return err

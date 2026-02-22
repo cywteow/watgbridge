@@ -36,7 +36,7 @@ const (
 
 // TgEditForumTopicName edits the name of a forum topic (thread) in a Telegram supergroup.
 func TgEditForumTopicName(b *gotgbot.Bot, chatId int64, threadId int64, newName string) error {
-	_, err := b.EditForumTopic(chatId, threadId, &gotgbot.EditForumTopicOpts{
+	_, err := queue.TgEditForumTopic(b, chatId, threadId, &gotgbot.EditForumTopicOpts{
 		Name: newName,
 	})
 	return err
@@ -58,7 +58,8 @@ func TgGetOrMakeThreadFromWa_String(waChatIdString string, tgChatId int64, threa
 
 	if !threadFound {
 		tgBot := state.State.TelegramBot
-		newForum, err := tgBot.CreateForumTopic(tgChatId, threadName, &gotgbot.CreateForumTopicOpts{})
+
+		newForum, err := queue.TgOpenForumTopic(tgBot, tgChatId, threadName, &gotgbot.CreateForumTopicOpts{})
 		if err != nil {
 			return 0, err
 		}
@@ -1177,5 +1178,27 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 		logger.Warn("Failed to send profile picture to Telegram", zap.Error(errSend))
 	} else {
 		logger.Info("Profile picture sent to Telegram topic", zap.String("jid", jid.String()), zap.Int64("threadId", threadId))
+	}
+}
+
+// SyncTopicNameByChatThreadPairs updates the topic names for all chat thread pairs.
+func SyncTopicNameByChatThreadPairs(b *gotgbot.Bot, groupId int64, chatThreadPairs []database.ChatThreadPair) {
+	for _, pair := range chatThreadPairs {
+		waChatId := pair.ID
+		tgThreadId := pair.TgThreadId
+
+		if waChatId == "status@broadcast" || waChatId == "calls" || waChatId == "mentions" {
+			continue
+		}
+		waChatJid, _ := WaParseJID(waChatId)
+
+		var newName string
+		if waChatJid.Server == waTypes.GroupServer {
+			newName = WaGetGroupName(waChatJid)
+		} else {
+			newName = WaGetContactName(waChatJid)
+		}
+
+		TgEditForumTopicName(b, groupId, tgThreadId, newName)
 	}
 }

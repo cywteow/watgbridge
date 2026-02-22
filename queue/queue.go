@@ -18,7 +18,7 @@ import (
 var (
 	WaInterval = time.Duration(state.State.Config.WhatsApp.QueueIntervalMs) * time.Millisecond
 	TgInterval = time.Duration(state.State.Config.Telegram.QueueIntervalMs) * time.Millisecond
-	QueueSize = 1000
+	QueueSize  = 1000
 )
 
 var waJobCh = make(chan func(), QueueSize)
@@ -101,6 +101,14 @@ func TgRun[T any](fn func() (T, error)) (T, error) {
 // Corrected: returns (bool, error) to match gotgbot.Bot.ReopenForumTopic
 func TgReopenForumTopic(b *gotgbot.Bot, chatId int64, threadId int64, opts *gotgbot.ReopenForumTopicOpts) (bool, error) {
 	return TgRun(func() (bool, error) { return b.ReopenForumTopic(chatId, threadId, opts) })
+}
+
+func TgOpenForumTopic(b *gotgbot.Bot, chatId int64, name string, opts *gotgbot.CreateForumTopicOpts) (*gotgbot.ForumTopic, error) {
+	return TgRun(func() (*gotgbot.ForumTopic, error) { return b.CreateForumTopic(chatId, name, opts) })
+}
+
+func TgEditForumTopic(b *gotgbot.Bot, chatId int64, threadId int64, opts *gotgbot.EditForumTopicOpts) (bool, error) {
+	return TgRun(func() (bool, error) { return b.EditForumTopic(chatId, threadId, opts) })
 }
 
 func TgSendMessage(b *gotgbot.Bot, chatId int64, text string, opts *gotgbot.SendMessageOpts) (*gotgbot.Message, error) {

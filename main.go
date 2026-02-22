@@ -12,6 +12,7 @@ import (
 	"watgbridge/database"
 	"watgbridge/modules"
 	"watgbridge/queue"
+	"watgbridge/scheduler"
 	"watgbridge/state"
 	"watgbridge/telegram"
 	"watgbridge/utils"
@@ -21,6 +22,7 @@ import (
 	"github.com/go-co-op/gocron"
 	"go.uber.org/zap"
 )
+
 func main() {
 	// Start rate-limited send queues for WhatsApp and Telegram.
 	// All sends must go through queue.WaSend / queue.TgRun.
@@ -202,7 +204,7 @@ func main() {
 		}
 	})
 
-	utils.StartTopicCleanupScheduler(s)
+	scheduler.StartTopicCleanupScheduler(s)
 	s.StartAsync()
 
 	state.State.WhatsAppClient.AddEventHandler(whatsapp.WhatsAppEventHandler)
