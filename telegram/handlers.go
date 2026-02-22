@@ -342,18 +342,18 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 	phone := args[1]
-	waJID := utils.WaParseJID(phone)
+	waJID, _ := utils.WaParseJID(phone)
 	if waJID.Server == "" {
 		_, err := utils.TgReplyTextByContext(b, c, "Provided phone number is not valid", nil, false)
 		return err
 	}
 	contactName := utils.WaGetContactName(waJID)
 	tgChatId := c.EffectiveChat.Id
-	_, err = utils.TgGetOrMakeThreadFromWa_String(waJID.String(), tgChatId, contactName)
+	_, err := utils.TgGetOrMakeThreadFromWa_String(waJID.String(), tgChatId, contactName)
 	if err != nil {
 		utils.TgSendErrorById(b, tgChatId, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
-				waJID.String()), err)
-		return
+			waJID.String()), err)
+		return err
 	}
 	return err
 }
@@ -827,7 +827,7 @@ func SyncTopicNamesHandler(b *gotgbot.Bot, c *ext.Context) error {
 			newName = utils.WaGetContactName(waChatJid)
 		}
 
-			   utils.TgEditForumTopicName(b, c.EffectiveChat.Id, tgThreadId, newName)
+		utils.TgEditForumTopicName(b, c.EffectiveChat.Id, tgThreadId, newName)
 		time.Sleep(5 * time.Second)
 	}
 
