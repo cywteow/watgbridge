@@ -58,6 +58,10 @@ func AddTelegramHandlers() {
 			"",
 		},
 		waTgBridgeCommand{
+			handlers.NewCommand("opentopic", StartPrivateChatHandler),
+			"Open a topic for a WhatsApp contact by phone number",
+		},
+		waTgBridgeCommand{
 			handlers.NewCommand("getwagroups", GetWhatsAppGroupsHandler),
 			"Get all the WhatsApp groups along with their JIDs",
 		},
@@ -323,6 +327,34 @@ func StartCommandHandler(b *gotgbot.Bot, c *ext.Context) error {
 	}
 
 	_, err := utils.TgReplyTextByContext(b, c, startMessage, nil, false)
+	return err
+}
+
+func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	usageString := "Usage: <code>/opentopic <phone_number></code>\nExample: <code>/opentopic 6581630123</code>"
+	args := c.Args()
+	if len(args) <= 1 {
+		_, err := utils.TgReplyTextByContext(b, c, usageString, nil, false)
+		return err
+	}
+	phone := args[1]
+	waJID := utils.WaParseJIDAuto(phone)
+	if waJID.Server == "" {
+		_, err := utils.TgReplyTextByContext(b, c, "Provided phone number is not valid", nil, false)
+		return err
+	}
+	contactName := utils.WaGetContactName(waJID)
+	tgChatId := c.EffectiveChat.Id
+	threadId, err = utils.TgGetOrMakeThreadFromWa_String(waJID.String(), tgChatId, contactName)
+	if err != nil {
+		utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
+				waJID.String()), err)
+		return
+	}
 	return err
 }
 
