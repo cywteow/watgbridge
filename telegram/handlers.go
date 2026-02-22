@@ -342,16 +342,16 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 	phone := args[1]
-	waJID := utils.WaParseJIDAuto(phone)
+	waJID := utils.WaParseJID(phone)
 	if waJID.Server == "" {
 		_, err := utils.TgReplyTextByContext(b, c, "Provided phone number is not valid", nil, false)
 		return err
 	}
 	contactName := utils.WaGetContactName(waJID)
 	tgChatId := c.EffectiveChat.Id
-	threadId, err = utils.TgGetOrMakeThreadFromWa_String(waJID.String(), tgChatId, contactName)
+	_, err = utils.TgGetOrMakeThreadFromWa_String(waJID.String(), tgChatId, contactName)
 	if err != nil {
-		utils.TgSendErrorById(tgBot, cfg.Telegram.TargetChatID, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
+		utils.TgSendErrorById(b, tgChatId, 0, fmt.Sprintf("failed to create/find thread id for '%s'",
 				waJID.String()), err)
 		return
 	}
