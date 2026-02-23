@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"watgbridge/state"
+	"watgbridge/telegram/middlewares"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"go.mau.fi/whatsmeow"
@@ -44,6 +45,10 @@ func waWorker() {
 
 func tgWorker() {
 	for job := range tgJobCh {
+		// Wait out any active rate-limit backoff before dispatching the next job.
+		// This prevents sending into a known-rate-limited window and avoids
+		// immediate 429s that would re-trigger the backoff.
+		middlewares.WaitTelegramRateLimit()
 		if state.State.Config.Telegram.QueueEnabled {
 			job()
 			time.Sleep(TgInterval)
