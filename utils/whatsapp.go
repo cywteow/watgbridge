@@ -101,7 +101,7 @@ func WaFuzzyFindContacts(query string) (map[string]string, int, error) {
 func WaGetGroupName(jid types.JID) string {
 	waClient := state.State.WhatsAppClient
 
-	groupInfo, err := waClient.GetGroupInfo(jid)
+	groupInfo, err := waClient.GetGroupInfo(context.Background(), jid)
 	if err != nil {
 		return jid.User
 	}
@@ -199,7 +199,7 @@ func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgI
 		tgBot    = state.State.TelegramBot
 	)
 
-	groupInfo, err := waClient.GetGroupInfo(group)
+	groupInfo, err := waClient.GetGroupInfo(context.Background(), jid)
 	if err != nil {
 		log.Printf("[whatsapp] failed to get group info of '%s': %s\n", group.String(), err)
 		return

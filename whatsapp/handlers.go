@@ -1015,47 +1015,47 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 			return
 		}
 
-		   decoder := goVCard.NewDecoder(bytes.NewReader([]byte(contactMsg.GetVcard())))
-		   card, err := decoder.Decode()
-		   if err != nil {
-			   bridgedText += "\n<i>Couldn't send the vCard as failed to parse it</i>"
-			   sentMsg, _ := queue.TgSendMessage(tgBot, cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
-				   ReplyParameters: &gotgbot.ReplyParameters{
-					   MessageId: replyToMsgId,
-				   },
-				   MessageThreadId: threadId,
-			   })
-			   if sentMsg.MessageId != 0 {
-				   database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
-					   cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
-			   }
-			   return
-		   }
+		decoder := goVCard.NewDecoder(bytes.NewReader([]byte(contactMsg.GetVcard())))
+		card, err := decoder.Decode()
+		if err != nil {
+			bridgedText += "\n<i>Couldn't send the vCard as failed to parse it</i>"
+			sentMsg, _ := queue.TgSendMessage(tgBot, cfg.Telegram.TargetChatID, bridgedText, &gotgbot.SendMessageOpts{
+				ReplyParameters: &gotgbot.ReplyParameters{
+					MessageId: replyToMsgId,
+				},
+				MessageThreadId: threadId,
+			})
+			if sentMsg.MessageId != 0 {
+				database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
+					cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
+			}
+			return
+		}
 
-		   // Normalize the vCard phone number to canonical JID format (e.g. "+65 8399 0358" → "6583990358@s.whatsapp.net")
-		   // so it matches the format used everywhere else in chat_thread_pairs.
-		   rawPhone := card.PreferredValue(goVCard.FieldTelephone)
-		   normalizedPhone := strings.NewReplacer("+", "", " ", "", "-", "").Replace(rawPhone) + "@s.whatsapp.net"
-		   contactJID, _ := utils.WaParseJID(normalizedPhone)
-		   // Use WaGetContactName for the topic name so it reflects the saved contact name.
-		   // TgGetOrMakeThreadFromWa_String checks DB first; only creates a new topic if none exists.
-		   contactTopicName := utils.WaGetContactName(contactJID)
-		   threadId, _ = utils.TgGetOrMakeThreadFromWa_String(normalizedPhone, cfg.Telegram.TargetChatID, contactTopicName)
+		// Normalize the vCard phone number to canonical JID format (e.g. "+65 8399 0358" → "6583990358@s.whatsapp.net")
+		// so it matches the format used everywhere else in chat_thread_pairs.
+		rawPhone := card.PreferredValue(goVCard.FieldTelephone)
+		normalizedPhone := strings.NewReplacer("+", "", " ", "", "-", "").Replace(rawPhone) + "@s.whatsapp.net"
+		contactJID, _ := utils.WaParseJID(normalizedPhone)
+		// Use WaGetContactName for the topic name so it reflects the saved contact name.
+		// TgGetOrMakeThreadFromWa_String checks DB first; only creates a new topic if none exists.
+		contactTopicName := utils.WaGetContactName(contactJID)
+		threadId, _ = utils.TgGetOrMakeThreadFromWa_String(normalizedPhone, cfg.Telegram.TargetChatID, contactTopicName)
 
-		   sentMsg, _ := queue.TgSendContact(tgBot, cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
-			   &gotgbot.SendContactOpts{
-				   Vcard: contactMsg.GetVcard(),
-				   ReplyParameters: &gotgbot.ReplyParameters{
-					   MessageId: replyToMsgId,
-				   },
-				   MessageThreadId: threadId,
-				   ReplyMarkup:     replyMarkup,
-			   })
-		   if sentMsg.MessageId != 0 {
-			   database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
-				   cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
-		   }
-		   return
+		sentMsg, _ := queue.TgSendContact(tgBot, cfg.Telegram.TargetChatID, card.PreferredValue(goVCard.FieldTelephone), contactMsg.GetDisplayName(),
+			&gotgbot.SendContactOpts{
+				Vcard: contactMsg.GetVcard(),
+				ReplyParameters: &gotgbot.ReplyParameters{
+					MessageId: replyToMsgId,
+				},
+				MessageThreadId: threadId,
+				ReplyMarkup:     replyMarkup,
+			})
+		if sentMsg.MessageId != 0 {
+			database.MsgIdAddNewPair(msgId, v.Info.MessageSource.Sender.String(), v.Info.Chat.String(),
+				cfg.Telegram.TargetChatID, sentMsg.MessageId, sentMsg.MessageThreadId)
+		}
+		return
 
 	} else if v.Message.GetContactsArrayMessage() != nil {
 
@@ -1291,7 +1291,7 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		if err != nil {
 			// Check if topic was deleted and try to recreate
 			errStr := err.Error()
-			if (strings.Contains(errStr, "message thread not found") || strings.Contains(errStr, "MESSAGE_THREAD_NOT_FOUND") || strings.Contains(errStr, "TOPIC_DELETED") || strings.Contains(errStr, "TOPIC_ID_INVALID")) {
+			if strings.Contains(errStr, "message thread not found") || strings.Contains(errStr, "MESSAGE_THREAD_NOT_FOUND") || strings.Contains(errStr, "TOPIC_DELETED") || strings.Contains(errStr, "TOPIC_ID_INVALID") {
 				// logger.Info("topic was deleted, recreating", zap.Int64("old_thread_id", threadId))
 				_ = database.ChatThreadDropPairByTg(cfg.Telegram.TargetChatID, threadId)
 
@@ -1555,7 +1555,7 @@ func UserAboutEventHandler(v *events.UserAbout) {
 
 	updateMessageText += fmt.Sprintf("<code>%s</code>", html.EscapeString(v.Status))
 
-	queue.TgSendMessage(tgBot, 
+	queue.TgSendMessage(tgBot,
 		cfg.Telegram.TargetChatID,
 		updateMessageText,
 		&gotgbot.SendMessageOpts{MessageThreadId: tgThreadId},
@@ -1665,6 +1665,7 @@ func PictureEventHandler(v *events.Picture) {
 			}
 		} else {
 			pictureInfo, err := waClient.GetProfilePictureInfo(
+				context.Background(),
 				v.JID,
 				&whatsmeow.GetProfilePictureParams{
 					Preview: false,
@@ -1716,6 +1717,7 @@ func PictureEventHandler(v *events.Picture) {
 			}
 		} else {
 			pictureInfo, err := waClient.GetProfilePictureInfo(
+				context.Background(),
 				v.JID,
 				&whatsmeow.GetProfilePictureParams{
 					Preview: false,

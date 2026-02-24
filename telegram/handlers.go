@@ -558,7 +558,7 @@ func JoinInviteLinkHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 	waClient := state.State.WhatsAppClient
 
-	groupID, err := waClient.JoinGroupWithLink(inviteLink)
+	groupID, err := waClient.JoinGroupWithLink(context.Background(), inviteLink)
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "Failed to join", err)
 	}
@@ -593,7 +593,7 @@ func SetTargetGroupChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 	)
 
 	groupJID, _ := utils.WaParseJID(groupID)
-	groupInfo, err := waClient.GetGroupInfo(groupJID)
+	groupInfo, err := waClient.GetGroupInfo(context.Background(), groupJID)
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "Failed to get group info", err)
 	}
@@ -673,7 +673,7 @@ func handleBlockUnblockUser(b *gotgbot.Bot, c *ext.Context, action events.Blockl
 		return err
 	}
 	jid, _ := utils.WaParseJID(waChatId)
-	_, err = state.State.WhatsAppClient.UpdateBlocklist(jid, action)
+	_, err = state.State.WhatsAppClient.UpdateBlocklist(context.Background(), jid, action)
 	if err != nil {
 		err = utils.TgReplyWithErrorByContext(b, c, "Failed to change the blocklist status", err)
 		return err
@@ -758,7 +758,7 @@ func GetProfilePictureHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 	userJID, _ := utils.WaParseJID(userID)
 
-	ppInfo, err := waClient.GetProfilePictureInfo(userJID, &whatsmeow.GetProfilePictureParams{})
+	ppInfo, err := waClient.GetProfilePictureInfo(context.Background(), userJID, &whatsmeow.GetProfilePictureParams{})
 	if err != nil {
 		return utils.TgReplyWithErrorByContext(b, c, "Failed to fetch profile picture info from WhatsApp", err)
 	}
