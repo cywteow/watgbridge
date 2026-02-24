@@ -199,7 +199,7 @@ func WaTagAll(group types.JID, msg *waE2E.Message, msgId, msgSender string, msgI
 		tgBot    = state.State.TelegramBot
 	)
 
-	groupInfo, err := waClient.GetGroupInfo(context.Background(), jid)
+	groupInfo, err := waClient.GetGroupInfo(context.Background(), group)
 	if err != nil {
 		log.Printf("[whatsapp] failed to get group info of '%s': %s\n", group.String(), err)
 		return

@@ -1150,7 +1150,7 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 	cfg := state.State.Config
 	logger := state.State.Logger
 
-	pictureInfo, err := waClient.GetProfilePictureInfo(jid, &whatsmeow.GetProfilePictureParams{Preview: false})
+	pictureInfo, err := waClient.GetProfilePictureInfo(context.Background(), jid, &whatsmeow.GetProfilePictureParams{Preview: false})
 	if err != nil {
 		logger.Warn("Failed to fetch profile picture info", zap.Error(err), zap.String("jid", jid.String()))
 		return
