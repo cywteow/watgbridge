@@ -44,17 +44,17 @@ func StartWorkers() {
 func waWorker() {
 	log.Printf("[wa_queue] worker ready")
 	for job := range waJobCh {
-		seq := waJobCounter.Add(1)
-		depth := len(waJobCh)
-		log.Printf("[wa_queue] job #%d started (remaining in queue: %d)", seq, depth)
+		// seq := waJobCounter.Add(1)
+		// depth := len(waJobCh)
+		// log.Printf("[wa_queue] job #%d started (remaining in queue: %d)", seq, depth)
 		job()
-		log.Printf("[wa_queue] job #%d completed", seq)
+		// log.Printf("[wa_queue] job #%d completed", seq)
 
 		if state.State.Config.WhatsApp.QueueEnabled {
 			// Read interval from config on every tick so config changes take effect.
 			interval := time.Duration(state.State.Config.WhatsApp.QueueIntervalMs) * time.Millisecond
 			if interval > 0 {
-				log.Printf("[wa_queue] throttling %v before next job", interval)
+				// log.Printf("[wa_queue] throttling %v before next job", interval)
 				time.Sleep(interval)
 			}
 		}
@@ -64,23 +64,23 @@ func waWorker() {
 func tgWorker() {
 	log.Printf("[tg_queue] worker ready")
 	for job := range tgJobCh {
-		seq := tgJobCounter.Add(1)
-		depth := len(tgJobCh)
-		log.Printf("[tg_queue] job #%d dequeued (remaining in queue: %d)", seq, depth)
+		// seq := tgJobCounter.Add(1)
+		// depth := len(tgJobCh)
+		// log.Printf("[tg_queue] job #%d dequeued (remaining in queue: %d)", seq, depth)
 
 		// Wait out any active rate-limit backoff BEFORE dispatching so we never
 		// fire a request we already know will be rejected.
 		middlewares.WaitTelegramRateLimit()
 
-		log.Printf("[tg_queue] job #%d dispatching", seq)
+		// log.Printf("[tg_queue] job #%d dispatching", seq)
 		job()
-		log.Printf("[tg_queue] job #%d completed", seq)
+		// log.Printf("[tg_queue] job #%d completed", seq)
 
 		if state.State.Config.Telegram.QueueEnabled {
 			// Read interval from config on every tick so config changes take effect.
 			interval := time.Duration(state.State.Config.Telegram.QueueIntervalMs) * time.Millisecond
 			if interval > 0 {
-				log.Printf("[tg_queue] throttling %v before next job", interval)
+				// log.Printf("[tg_queue] throttling %v before next job", interval)
 				time.Sleep(interval)
 			}
 		}
@@ -96,18 +96,18 @@ func WaSend(ctx context.Context, jid waTypes.JID, msg *waE2E.Message) (whatsmeow
 		e error
 	}
 	ch := make(chan result, 1)
-	qDepth := len(waJobCh)
-	log.Printf("[wa_queue] enqueuing send to %s (queue depth before enqueue: %d/%d)", jid.String(), qDepth, QueueSize)
+	// qDepth := len(waJobCh)
+	// log.Printf("[wa_queue] enqueuing send to %s (queue depth before enqueue: %d/%d)", jid.String(), qDepth, QueueSize)
 	waJobCh <- func() {
 		r, e := state.State.WhatsAppClient.SendMessage(ctx, jid, msg)
 		ch <- result{r, e}
 	}
 	res := <-ch
-	if res.e != nil {
-		log.Printf("[wa_queue] send to %s failed: %v", jid.String(), res.e)
-	} else {
-		log.Printf("[wa_queue] send to %s succeeded (msgID: %s)", jid.String(), res.r.ID)
-	}
+	// if res.e != nil {
+	// 	log.Printf("[wa_queue] send to %s failed: %v", jid.String(), res.e)
+	// } else {
+	// 	log.Printf("[wa_queue] send to %s succeeded (msgID: %s)", jid.String(), res.r.ID)
+	// }
 	return res.r, res.e
 }
 
@@ -126,8 +126,8 @@ func TgRun[T any](fn func() (T, error)) (T, error) {
 		e error
 	}
 	ch := make(chan result, 1)
-	qDepth := len(tgJobCh)
-	log.Printf("[tg_queue] enqueuing job (queue depth before enqueue: %d/%d)", qDepth, QueueSize)
+	// qDepth := len(tgJobCh)
+	// log.Printf("[tg_queue] enqueuing job (queue depth before enqueue: %d/%d)", qDepth, QueueSize)
 	tgJobCh <- func() {
 		v, e := fn()
 		ch <- result{v, e}
