@@ -23,10 +23,6 @@ import (
 )
 
 func main() {
-	// Start rate-limited send queues for WhatsApp and Telegram.
-	// All sends must go through queue.WaSend / queue.TgRun.
-	queue.StartWorkers()
-
 	// Load configuration file
 	cfg := state.State.Config
 	cfg.SetDefaults()
@@ -47,6 +43,15 @@ func main() {
 			fmt.Printf("%d. %s: %s\n", num+1, opt.Name, opt.Description)
 		}
 	}
+
+	// Start rate-limited send queues AFTER config is loaded so workers can read
+	// the configured interval values (QueueIntervalMs) from the start.
+	// All sends must go through queue.WaSend / queue.TgRun.
+	fmt.Printf("[queue] TG queue_enabled=%v interval_ms=%d | WA queue_enabled=%v interval_ms=%d\n",
+		cfg.Telegram.QueueEnabled, cfg.Telegram.QueueIntervalMs,
+		cfg.WhatsApp.QueueEnabled, cfg.WhatsApp.QueueIntervalMs,
+	)
+	queue.StartWorkers()
 
 	if cfg.Telegram.APIURL == "" {
 		cfg.Telegram.APIURL = gotgbot.DefaultAPIURL

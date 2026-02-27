@@ -5,6 +5,8 @@ package queue
 
 import (
 	"context"
+	"log"
+	"sync/atomic"
 	"time"
 
 	"watgbridge/state"
@@ -16,44 +18,71 @@ import (
 	waTypes "go.mau.fi/whatsmeow/types"
 )
 
-var (
-	WaInterval = time.Duration(state.State.Config.WhatsApp.QueueIntervalMs) * time.Millisecond
-	TgInterval = time.Duration(state.State.Config.Telegram.QueueIntervalMs) * time.Millisecond
-	QueueSize  = 1000
-)
+const QueueSize = 1000
+
+// NOTE: Do NOT initialize WaInterval / TgInterval as package-level vars from
+// state.State.Config here – config is not yet loaded at package-init time, so
+// those values would always be 0. Workers read the config on every iteration
+// instead (see waWorker / tgWorker).
 
 var waJobCh = make(chan func(), QueueSize)
 var tgJobCh = make(chan func(), QueueSize)
 
+// counters for log correlation
+var waJobCounter atomic.Int64
+var tgJobCounter atomic.Int64
+
 // StartWorkers launches the background rate-limited sender goroutines.
-// Must be called exactly once at startup (before any sends occur).
+// Must be called exactly once at startup, AFTER the config has been loaded.
 func StartWorkers() {
+	log.Printf("[queue] starting workers (queue size: %d)", QueueSize)
 	go waWorker()
 	go tgWorker()
+	log.Printf("[queue] workers started")
 }
 
 func waWorker() {
+	log.Printf("[wa_queue] worker ready")
 	for job := range waJobCh {
+		seq := waJobCounter.Add(1)
+		depth := len(waJobCh)
+		log.Printf("[wa_queue] job #%d started (remaining in queue: %d)", seq, depth)
+		job()
+		log.Printf("[wa_queue] job #%d completed", seq)
+
 		if state.State.Config.WhatsApp.QueueEnabled {
-			job()
-			time.Sleep(WaInterval)
-		} else {
-			job()
+			// Read interval from config on every tick so config changes take effect.
+			interval := time.Duration(state.State.Config.WhatsApp.QueueIntervalMs) * time.Millisecond
+			if interval > 0 {
+				log.Printf("[wa_queue] throttling %v before next job", interval)
+				time.Sleep(interval)
+			}
 		}
 	}
 }
 
 func tgWorker() {
+	log.Printf("[tg_queue] worker ready")
 	for job := range tgJobCh {
-		// Wait out any active rate-limit backoff before dispatching the next job.
-		// This prevents sending into a known-rate-limited window and avoids
-		// immediate 429s that would re-trigger the backoff.
+		seq := tgJobCounter.Add(1)
+		depth := len(tgJobCh)
+		log.Printf("[tg_queue] job #%d dequeued (remaining in queue: %d)", seq, depth)
+
+		// Wait out any active rate-limit backoff BEFORE dispatching so we never
+		// fire a request we already know will be rejected.
 		middlewares.WaitTelegramRateLimit()
+
+		log.Printf("[tg_queue] job #%d dispatching", seq)
+		job()
+		log.Printf("[tg_queue] job #%d completed", seq)
+
 		if state.State.Config.Telegram.QueueEnabled {
-			job()
-			time.Sleep(TgInterval)
-		} else {
-			job()
+			// Read interval from config on every tick so config changes take effect.
+			interval := time.Duration(state.State.Config.Telegram.QueueIntervalMs) * time.Millisecond
+			if interval > 0 {
+				log.Printf("[tg_queue] throttling %v before next job", interval)
+				time.Sleep(interval)
+			}
 		}
 	}
 }
@@ -67,11 +96,18 @@ func WaSend(ctx context.Context, jid waTypes.JID, msg *waE2E.Message) (whatsmeow
 		e error
 	}
 	ch := make(chan result, 1)
+	qDepth := len(waJobCh)
+	log.Printf("[wa_queue] enqueuing send to %s (queue depth before enqueue: %d/%d)", jid.String(), qDepth, QueueSize)
 	waJobCh <- func() {
 		r, e := state.State.WhatsAppClient.SendMessage(ctx, jid, msg)
 		ch <- result{r, e}
 	}
 	res := <-ch
+	if res.e != nil {
+		log.Printf("[wa_queue] send to %s failed: %v", jid.String(), res.e)
+	} else {
+		log.Printf("[wa_queue] send to %s succeeded (msgID: %s)", jid.String(), res.r.ID)
+	}
 	return res.r, res.e
 }
 
@@ -90,6 +126,8 @@ func TgRun[T any](fn func() (T, error)) (T, error) {
 		e error
 	}
 	ch := make(chan result, 1)
+	qDepth := len(tgJobCh)
+	log.Printf("[tg_queue] enqueuing job (queue depth before enqueue: %d/%d)", qDepth, QueueSize)
 	tgJobCh <- func() {
 		v, e := fn()
 		ch <- result{v, e}
