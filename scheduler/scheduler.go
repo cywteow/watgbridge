@@ -19,7 +19,7 @@ import (
 // msg_id_pairs are removed so the database stays in sync.
 // Resync of topic names is also handled here
 func StartTopicCleanupScheduler(s *gocron.Scheduler) {
-	const intervalMins = 15
+	const intervalMins = 60
 	_, _ = s.Every(intervalMins).Minutes().Tag("topic_cleanup").Do(cleanupDeletedTopics)
 }
 
