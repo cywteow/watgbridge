@@ -201,7 +201,7 @@ func main() {
 
 	s := gocron.NewScheduler(time.UTC)
 	s.TagsUnique()
-	scheduler.StartTopicCleanupScheduler(s)
+	scheduler.StartTopicCleanupScheduler()
 	scheduler.StartMsgCleanUpScheduler(s)
 	s.StartAsync()
 

@@ -1185,20 +1185,25 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 func SyncTopicNameByChatThreadPairs(b *gotgbot.Bot, groupId int64, chatThreadPairs []database.ChatThreadPair) {
 	for _, pair := range chatThreadPairs {
 		waChatId := pair.ID
-		tgThreadId := pair.TgThreadId
 
 		if waChatId == "status@broadcast" || waChatId == "calls" || waChatId == "mentions" {
 			continue
 		}
-		waChatJid, _ := WaParseJID(waChatId)
-
-		var newName string
-		if waChatJid.Server == waTypes.GroupServer {
-			newName = WaGetGroupName(waChatJid)
-		} else {
-			newName = WaGetContactName(waChatJid)
-		}
-
-		TgEditForumTopicName(b, groupId, tgThreadId, newName)
+		SyncTopicNameByChatThreadPair(b, groupId, pair)
 	}
+}
+
+func SyncTopicNameByChatThreadPair(b *gotgbot.Bot, groupId int64, pair database.ChatThreadPair) {
+	waChatId := pair.ID
+	tgThreadId := pair.TgThreadId
+	waChatJid, _ := WaParseJID(waChatId)
+
+	var newName string
+	if waChatJid.Server == waTypes.GroupServer {
+		newName = WaGetGroupName(waChatJid)
+	} else {
+		newName = WaGetContactName(waChatJid)
+	}
+
+	TgEditForumTopicName(b, groupId, tgThreadId, newName)
 }

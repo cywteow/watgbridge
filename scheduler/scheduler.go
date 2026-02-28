@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"strings"
+	"time"
 
 	"watgbridge/database"
 	"watgbridge/queue"
@@ -12,15 +13,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// StartTopicCleanupScheduler registers a periodic cron job that checks every
-// configured interval whether each Telegram forum topic (thread) that is
-// stored in chat_thread_pairs still exists. If a topic has been deleted from
-// the Telegram group, the corresponding records in both chat_thread_pairs and
-// msg_id_pairs are removed so the database stays in sync.
-// Resync of topic names is also handled here
-func StartTopicCleanupScheduler(s *gocron.Scheduler) {
-	const intervalMins = 60
-	_, _ = s.Every(intervalMins).Minutes().Tag("topic_cleanup").Do(cleanupDeletedTopics)
+// StartTopicCleanupScheduler launches a background goroutine that runs
+// cleanupDeletedTopics and then waits for the configured interval before
+// running again. Using a post-completion delay (rather than a fixed clock
+// interval) guarantees runs never overlap, even when the job takes longer
+// than the interval due to rate-limiting.
+func StartTopicCleanupScheduler() {
+	const interval = 60 * time.Minute
+	go func() {
+		for {
+			cleanupDeletedTopics()
+			time.Sleep(interval)
+		}
+	}()
 }
 
 // StartMsgCleanUpScheduler registers a periodic cron job to clean up old messages.
@@ -88,8 +93,7 @@ func cleanupDeletedTopics() {
 		if probeErr == nil || !isTopicNotFound(probeErr) {
 			// Topic is still alive;
 			if isTopicNotModified(probeErr) {
-				// utils.SyncTopicNameByChatThreadPairs will take care of any name changes
-				utils.SyncTopicNameByChatThreadPairs(bot, tgChatId, pairs)
+				utils.SyncTopicNameByChatThreadPair(bot, tgChatId, pair)
 			}
 			continue
 		}

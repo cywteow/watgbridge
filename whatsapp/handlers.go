@@ -2020,7 +2020,8 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 	}
 
 	if v.Name != nil {
-		_, err = tgBot.EditForumTopic(
+		_, err = queue.TgEditForumTopic(
+			tgBot,
 			cfg.Telegram.TargetChatID, tgThreadId,
 			&gotgbot.EditForumTopicOpts{
 				Name: v.Name.Name,
