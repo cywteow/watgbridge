@@ -341,7 +341,15 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 	phone := args[1]
-	waJID, _ := utils.WaParseJID(phone)
+	// Sanitize phone number: remove '+', '-', '@', and spaces
+	phoneSanitized := strings.Map(func(r rune) rune {
+		if r == '+' || r == '-' || r == '@' || r == ' ' {
+			return -1
+		}
+		return r
+	}, phone)
+
+	waJID, _ := utils.WaParseJID(phoneSanitized)
 	if waJID.Server == "" {
 		_, err := utils.TgReplyTextByContext(b, c, "Provided phone number is not valid", nil, false)
 		return err
