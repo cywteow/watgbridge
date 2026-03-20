@@ -112,13 +112,13 @@ jobs:
             docker rm "${{ env.CONTAINER_NAME }}" || true
 
             # 2. Force a fresh volume on every deploy to purge old config
-            docker volume rm watgbridge_config || true
-            docker volume create watgbridge_config
+            docker volume rm "${{ env.CONTAINER_NAME }}_config" || true
+            docker volume create "${{ env.CONTAINER_NAME }}_config"
 
             # 3. Copy config into volume via helper container
             docker run --rm \
               -v $config_path:/src/config.yaml \
-              -v watgbridge_config:/dest \
+              -v "${{ env.CONTAINER_NAME }}_config":/dest \
               alpine cp /src/config.yaml /dest/config.yaml
 
             # 4. Delete config from host immediately after
@@ -129,8 +129,8 @@ jobs:
               --name "${{ env.CONTAINER_NAME }}" \
               --restart unless-stopped \
               -e NODE_ENV="production" \
-              -v watgbridge_config:/config_mount:ro \
-              -v /mnt/Server/docker/watgbridge:/data \
+              -v "${{ env.CONTAINER_NAME }}_config":/config_mount:ro \
+              -v /mnt/Server/docker/${{ env.CONTAINER_NAME }}:/data \
               $image_name sh -c "cp /config_mount/config.yaml /go/src/watgbridge/config.yaml && ./watgbridge"
 
             # 6. Health check: wait and verify container is still running
