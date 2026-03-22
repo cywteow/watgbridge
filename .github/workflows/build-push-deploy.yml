@@ -152,7 +152,7 @@ jobs:
       - name: Generate config.yaml from secret and variable
         run: |
           echo "${{ vars.CONFIG_YAML_CONTENT_2 }}" > config_instance2.yaml
-          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|g" config_instance2.yaml
+          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN_2 }}|g" config_instance2.yaml
           sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" config_instance2.yaml
           sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" config_instance2.yaml
 
