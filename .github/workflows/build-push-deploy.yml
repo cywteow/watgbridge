@@ -151,10 +151,10 @@ jobs:
     steps:
       - name: Generate config.yaml from secret and variable
         run: |
-          echo "${{ vars.CONFIG_YAML_CONTENT_2 }}" > config.yaml
-          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|g" config.yaml
-          sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" config.yaml
-          sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" config.yaml
+          echo "${{ vars.CONFIG_YAML_CONTENT_2 }}" > config_instance2.yaml
+          sed -i "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|g" config_instance2.yaml
+          sed -i "s|__DB_USER__|${{ secrets.DB_USER }}|g" config_instance2.yaml
+          sed -i "s|__DB_PASSWORD__|${{ secrets.DB_PASSWORD }}|g" config_instance2.yaml
 
       - name: Copy config.yaml to server
         uses: appleboy/scp-action@v1.0.0
@@ -163,7 +163,7 @@ jobs:
           username: ${{ secrets.AWS_EC2_USER }}
           key: ${{ secrets.AWS_EC2_SSH_KEY }}
           port: ${{ vars.AWS_EC2_PORT }}
-          source: "config.yaml"
+          source: "config_instance2.yaml"
           target: "/home/${{ secrets.AWS_EC2_USER }}"
 
       - name: Set lowercase repository name and container name
@@ -183,7 +183,7 @@ jobs:
           script: |
             set -e
             image_name="ghcr.io/${{ env.REPO_LOWERCASE }}:latest"
-            config_path="/home/${{ secrets.AWS_EC2_USER }}/config.yaml"
+            config_path="/home/${{ secrets.AWS_EC2_USER }}/config_instance2.yaml"
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull -q $image_name
