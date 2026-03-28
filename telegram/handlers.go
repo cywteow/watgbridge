@@ -7,6 +7,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -341,6 +342,12 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 	phone := args[1]
+	// Extract phone number from WhatsApp URL if provided
+	if parsed, err := url.Parse(phone); err == nil && parsed.Scheme != "" {
+		if q := parsed.Query().Get("phone"); q != "" {
+			phone = q
+		}
+	}
 	// Sanitize phone number: remove '+', '-', '@', and spaces
 	phoneSanitized := strings.Map(func(r rune) rune {
 		if r == '+' || r == '-' || r == '@' || r == ' ' {
