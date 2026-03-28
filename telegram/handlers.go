@@ -334,8 +334,10 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 	if !utils.TgUpdateIsAuthorized(b, c) {
 		return nil
 	}
-
-	usageString := "Usage: <code>/send <phone_number></code>\nExample: <code>/send 6581630123</code>"
+	// /send https://api.whatsapp.com/send?phone=%2B6581630123
+	// /send 6581630123
+	// /send +6581630123
+	usageString := "Usage: <code>/send <phone_number/URL></code>\nExample: <code>/send 6581630123</code>"
 	args := c.Args()
 	if len(args) <= 1 {
 		_, err := utils.TgReplyTextByContext(b, c, usageString, nil, false)
