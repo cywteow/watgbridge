@@ -172,6 +172,21 @@ func ChatThreadGetTgFromWa(waChatId string, tgChatId int64) (int64, bool, error)
 	return chatPair.TgThreadId, found, res.Error
 }
 
+func ChatThreadGetPinnedMsgId(waChatId string, tgChatId int64) (int64, error) {
+	db := state.State.Database
+	var chatPair ChatThreadPair
+	res := db.Where("id = ? AND tg_chat_id = ?", waChatId, tgChatId).Find(&chatPair)
+	return chatPair.PinnedMsgId, res.Error
+}
+
+func ChatThreadSetPinnedMsgId(waChatId string, tgChatId int64, pinnedMsgId int64) error {
+	db := state.State.Database
+	res := db.Model(&ChatThreadPair{}).
+		Where("id = ? AND tg_chat_id = ?", waChatId, tgChatId).
+		Update("pinned_msg_id", pinnedMsgId)
+	return res.Error
+}
+
 func ChatThreadDropPairByTg(tgChatId, tgThreadId int64) error {
 
 	db := state.State.Database

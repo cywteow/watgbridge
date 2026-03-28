@@ -198,6 +198,10 @@ func TgPinChatMessage(b *gotgbot.Bot, chatId int64, messageId int64, opts *gotgb
 	return TgRun(func() (bool, error) { return b.PinChatMessage(chatId, messageId, opts) })
 }
 
+func TgUnpinChatMessage(b *gotgbot.Bot, chatId int64, opts *gotgbot.UnpinChatMessageOpts) (bool, error) {
+	return TgRun(func() (bool, error) { return b.UnpinChatMessage(chatId, opts) })
+}
+
 func TgSendLocation(b *gotgbot.Bot, chatId int64, latitude float64, longitude float64, opts *gotgbot.SendLocationOpts) (*gotgbot.Message, error) {
 	return TgRun(func() (*gotgbot.Message, error) { return b.SendLocation(chatId, latitude, longitude, opts) })
 }

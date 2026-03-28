@@ -21,9 +21,10 @@ type MsgIdPair struct {
 }
 
 type ChatThreadPair struct {
-	ID         string `gorm:"primaryKey;"` // WhatsApp Chat ID
-	TgChatId   int64  // Telegram Chat ID
-	TgThreadId int64  // Telegram Thread ID (Topics)
+	ID          string `gorm:"primaryKey;"` // WhatsApp Chat ID
+	TgChatId    int64  // Telegram Chat ID
+	TgThreadId  int64  // Telegram Thread ID (Topics)
+	PinnedMsgId int64  // Telegram Message ID of the pinned profile picture (0 = none)
 }
 
 type ContactName struct {

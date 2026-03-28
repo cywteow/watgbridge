@@ -1624,6 +1624,13 @@ func PictureEventHandler(v *events.Picture) {
 	} else {
 		tgThreadId, threadFound, err = database.ChatThreadGetTgFromWa(v.JID.ToNonAD().String(), cfg.Telegram.TargetChatID)
 	}
+
+	// Determine the DB key used when this thread was stored
+	waChatIdString := v.JID.ToNonAD().String()
+	if !pn.IsEmpty() {
+		waChatIdString = pn.String()
+	}
+
 	if err != nil {
 		logger.Warn(
 			"failed to find thread for a WhatsApp chat (handling Picture event)",
@@ -1654,6 +1661,11 @@ func PictureEventHandler(v *events.Picture) {
 		}
 		changer := utils.WaGetContactName(v.Author)
 		if v.Remove {
+			// Unpin previous profile picture if any
+			if prevPinId, _ := database.ChatThreadGetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID); prevPinId != 0 {
+				queue.TgUnpinChatMessage(tgBot, cfg.Telegram.TargetChatID, &gotgbot.UnpinChatMessageOpts{MessageId: &prevPinId})
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, 0)
+			}
 			updateText := fmt.Sprintf("The profile picture was removed by %s", html.EscapeString(changer))
 			err = utils.TgSendTextById(
 				tgBot, cfg.Telegram.TargetChatID, tgThreadId,
@@ -1686,13 +1698,24 @@ func PictureEventHandler(v *events.Picture) {
 				return
 			}
 
-			_, err = queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
+			// Unpin previous profile picture before sending the new one
+			if prevPinId, _ := database.ChatThreadGetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID); prevPinId != 0 {
+				queue.TgUnpinChatMessage(tgBot, cfg.Telegram.TargetChatID, &gotgbot.UnpinChatMessageOpts{MessageId: &prevPinId})
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, 0)
+			}
+
+			sentMsg, err := queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
 				MessageThreadId: tgThreadId,
 				Caption:         fmt.Sprintf("The profile picture was updated by %s", html.EscapeString(changer)),
 			})
 			if err != nil {
 				logger.Error("failed to send message to the group", zap.Error(err))
 				return
+			}
+			if _, errPin := queue.TgPinChatMessage(tgBot, cfg.Telegram.TargetChatID, sentMsg.MessageId, &gotgbot.PinChatMessageOpts{DisableNotification: true}); errPin != nil {
+				logger.Warn("failed to pin new profile picture", zap.Error(errPin))
+			} else {
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, sentMsg.MessageId)
 			}
 		}
 	} else if v.JID.Server == waTypes.DefaultUserServer {
@@ -1706,6 +1729,11 @@ func PictureEventHandler(v *events.Picture) {
 			return
 		}
 		if v.Remove {
+			// Unpin previous profile picture if any
+			if prevPinId, _ := database.ChatThreadGetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID); prevPinId != 0 {
+				queue.TgUnpinChatMessage(tgBot, cfg.Telegram.TargetChatID, &gotgbot.UnpinChatMessageOpts{MessageId: &prevPinId})
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, 0)
+			}
 			updateText := "The profile picture was removed"
 			err = utils.TgSendTextById(
 				tgBot, cfg.Telegram.TargetChatID, tgThreadId,
@@ -1738,13 +1766,24 @@ func PictureEventHandler(v *events.Picture) {
 				return
 			}
 
-			_, err = queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
+			// Unpin previous profile picture before sending the new one
+			if prevPinId, _ := database.ChatThreadGetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID); prevPinId != 0 {
+				queue.TgUnpinChatMessage(tgBot, cfg.Telegram.TargetChatID, &gotgbot.UnpinChatMessageOpts{MessageId: &prevPinId})
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, 0)
+			}
+
+			sentMsg, err := queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
 				MessageThreadId: tgThreadId,
 				Caption:         "The profile picture was updated",
 			})
 			if err != nil {
 				logger.Error("failed to send message to the group", zap.Error(err))
 				return
+			}
+			if _, errPin := queue.TgPinChatMessage(tgBot, cfg.Telegram.TargetChatID, sentMsg.MessageId, &gotgbot.PinChatMessageOpts{DisableNotification: true}); errPin != nil {
+				logger.Warn("failed to pin new profile picture", zap.Error(errPin))
+			} else {
+				database.ChatThreadSetPinnedMsgId(waChatIdString, cfg.Telegram.TargetChatID, sentMsg.MessageId)
 			}
 		}
 	} else {

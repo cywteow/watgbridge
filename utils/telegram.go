@@ -67,7 +67,7 @@ func TgGetOrMakeThreadFromWa_String(waChatIdString string, tgChatId int64, threa
 		// Send profile picture regardless of DB error so the topic always gets
 		// its pic+pin even if the pair record failed to persist.
 		jid, _ := waTypes.ParseJID(waChatIdString)
-		SendWaProfilePicToTopic(jid, newForum.MessageThreadId, "WhatsApp profile picture")
+		SendWaProfilePicToTopic(jid, waChatIdString, tgChatId, newForum.MessageThreadId, "WhatsApp profile picture")
 		if dbErr != nil {
 			return newForum.MessageThreadId, dbErr
 		}
@@ -1145,7 +1145,9 @@ func SendMessageConfirmation(
 }
 
 // SendWaProfilePicToTopic sends WhatsApp profile picture to a Telegram topic.
-func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
+// If a photo is successfully sent and pinned, the pinned message ID is stored
+// in the database against the (waChatIdString, tgChatId) pair.
+func SendWaProfilePicToTopic(jid waTypes.JID, waChatIdString string, tgChatId int64, threadId int64, caption string) {
 	waClient := state.State.WhatsAppClient
 	tgBot := state.State.TelegramBot
 	cfg := state.State.Config
@@ -1184,6 +1186,10 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 		})
 		if errPin != nil {
 			logger.Warn("Failed to pin profile picture in Telegram topic", zap.Error(errPin))
+		} else if waChatIdString != "" {
+			if dbErr := database.ChatThreadSetPinnedMsgId(waChatIdString, tgChatId, sentMsg.MessageId); dbErr != nil {
+				logger.Warn("Failed to store pinned message ID", zap.Error(dbErr))
+			}
 		}
 	}
 }
