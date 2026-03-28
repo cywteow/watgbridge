@@ -194,6 +194,10 @@ func TgSendContact(b *gotgbot.Bot, chatId int64, phoneNumber string, firstName s
 	return TgRun(func() (*gotgbot.Message, error) { return b.SendContact(chatId, phoneNumber, firstName, opts) })
 }
 
+func TgPinChatMessage(b *gotgbot.Bot, chatId int64, messageId int64, opts *gotgbot.PinChatMessageOpts) (bool, error) {
+	return TgRun(func() (bool, error) { return b.PinChatMessage(chatId, messageId, opts) })
+}
+
 func TgSendLocation(b *gotgbot.Bot, chatId int64, latitude float64, longitude float64, opts *gotgbot.SendLocationOpts) (*gotgbot.Message, error) {
 	return TgRun(func() (*gotgbot.Message, error) { return b.SendLocation(chatId, latitude, longitude, opts) })
 }

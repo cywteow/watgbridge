@@ -1170,7 +1170,7 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 		logger.Warn("Failed to read profile picture bytes", zap.Error(err))
 		return
 	}
-	_, errSend := queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
+	sentMsg, errSend := queue.TgSendPhoto(tgBot, cfg.Telegram.TargetChatID, &gotgbot.FileReader{Data: bytes.NewReader(newPictureBytes)}, &gotgbot.SendPhotoOpts{
 		MessageThreadId: threadId,
 		Caption:         caption,
 	})
@@ -1178,6 +1178,12 @@ func SendWaProfilePicToTopic(jid waTypes.JID, threadId int64, caption string) {
 		logger.Warn("Failed to send profile picture to Telegram", zap.Error(errSend))
 	} else {
 		logger.Info("Profile picture sent to Telegram topic", zap.String("jid", jid.String()), zap.Int64("threadId", threadId))
+		_, errPin := queue.TgPinChatMessage(tgBot, cfg.Telegram.TargetChatID, sentMsg.MessageId, &gotgbot.PinChatMessageOpts{
+			DisableNotification: true,
+		})
+		if errPin != nil {
+			logger.Warn("Failed to pin profile picture in Telegram topic", zap.Error(errPin))
+		}
 	}
 }
 
