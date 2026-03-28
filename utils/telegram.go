@@ -63,13 +63,14 @@ func TgGetOrMakeThreadFromWa_String(waChatIdString string, tgChatId int64, threa
 		if err != nil {
 			return 0, err
 		}
-		err = database.ChatThreadAddNewPair(waChatIdString, tgChatId, newForum.MessageThreadId)
-		if err != nil {
-			return newForum.MessageThreadId, err
-		}
-		// Send profile picture here
+		dbErr := database.ChatThreadAddNewPair(waChatIdString, tgChatId, newForum.MessageThreadId)
+		// Send profile picture regardless of DB error so the topic always gets
+		// its pic+pin even if the pair record failed to persist.
 		jid, _ := waTypes.ParseJID(waChatIdString)
 		SendWaProfilePicToTopic(jid, newForum.MessageThreadId, "WhatsApp profile picture")
+		if dbErr != nil {
+			return newForum.MessageThreadId, dbErr
+		}
 		return newForum.MessageThreadId, nil
 	}
 
