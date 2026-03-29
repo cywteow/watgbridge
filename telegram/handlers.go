@@ -343,11 +343,12 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 		_, err := utils.TgReplyTextByContext(b, c, usageString, nil, false)
 		return err
 	}
-	phone := args[1]
+	// Join all arguments after /send to handle phone numbers with spaces
+	phoneRaw := strings.Join(args[1:], " ")
 	// Extract phone number from WhatsApp URL if provided
-	if parsed, err := url.Parse(phone); err == nil && parsed.Scheme != "" {
+	if parsed, err := url.Parse(phoneRaw); err == nil && parsed.Scheme != "" {
 		if q := parsed.Query().Get("phone"); q != "" {
-			phone = q
+			phoneRaw = q
 		}
 	}
 	// Sanitize phone number: remove '+', '-', '@', and spaces
@@ -356,7 +357,7 @@ func StartPrivateChatHandler(b *gotgbot.Bot, c *ext.Context) error {
 			return -1
 		}
 		return r
-	}, phone)
+	}, phoneRaw)
 
 	waJID, _ := utils.WaParseJID(phoneSanitized)
 	if waJID.Server == "" {
