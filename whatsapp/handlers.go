@@ -201,6 +201,18 @@ func MessageFromOthersEventHandler(text string, v *events.Message, isEdited bool
 		return
 	}
 
+	if waClient.Store.ChatSettings != nil {
+		chatSettings, err := waClient.Store.ChatSettings.GetChatSettings(context.Background(), v.Info.Chat)
+		if err == nil && chatSettings.Archived {
+			// Return if the chat is archived
+			logger.Debug("returning because message from an archived chat",
+				zap.String("event_id", v.Info.ID),
+				zap.String("chat_jid", v.Info.Chat.String()),
+			)
+			return
+		}
+	}
+
 	replyMarkup := utils.TgBuildUrlButton(utils.WaGetContactName(v.Info.Sender), fmt.Sprintf("https://wa.me/%s", v.Info.MessageSource.Sender.ToNonAD().User))
 	if !isEdited {
 		if lowercaseText := strings.ToLower(text); !v.Info.IsFromMe && v.Info.IsGroup && slices.Contains(cfg.WhatsApp.TagAllAllowedGroups, v.Info.Chat.User) &&
