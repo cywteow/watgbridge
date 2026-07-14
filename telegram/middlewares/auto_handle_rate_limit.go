@@ -62,8 +62,7 @@ type autoHandleRateLimitBotClient struct {
 }
 
 func (b *autoHandleRateLimitBotClient) RequestWithContext(ctx context.Context,
-	token string, method string, params map[string]string,
-	data map[string]gotgbot.FileReader,
+	token string, method string, params map[string]any,
 	opts *gotgbot.RequestOpts) (json.RawMessage, error) {
 
 	attempt := 0
@@ -76,7 +75,7 @@ func (b *autoHandleRateLimitBotClient) RequestWithContext(ctx context.Context,
 			log.Printf("[auto_handle_rate_limit] retrying %s (attempt %d)", method, attempt)
 		}
 
-		response, err := b.BotClient.RequestWithContext(ctx, token, method, params, data, opts)
+		response, err := b.BotClient.RequestWithContext(ctx, token, method, params, opts)
 		if err == nil {
 			if attempt > 1 {
 				log.Printf("[auto_handle_rate_limit] %s succeeded after %d attempts", method, attempt)
