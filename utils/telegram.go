@@ -1208,6 +1208,9 @@ func SyncTopicNameByChatThreadPairs(b *gotgbot.Bot, groupId int64, chatThreadPai
 
 func SyncTopicNameByChatThreadPair(b *gotgbot.Bot, groupId int64, pair database.ChatThreadPair) {
 	waChatId := pair.ID
+	if waChatId == "" {
+		return
+	}
 	tgThreadId := pair.TgThreadId
 	waChatJid, _ := WaParseJID(waChatId)
 

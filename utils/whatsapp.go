@@ -20,6 +20,9 @@ import (
 )
 
 func WaParseJID(s string) (types.JID, bool) {
+	if len(s) == 0 {
+		return types.JID{}, false
+	}
 	if s[0] == '+' {
 		s = SubString(s, 1, len(s)-1)
 	}
