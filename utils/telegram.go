@@ -289,6 +289,9 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		}
 	}
 
+	// Build a quoted message stub from the replied-to Telegram message content.
+	quotedMsg := buildQuotedMsgFromTg(msgToReplyTo)
+
 	if msgToForward.Photo != nil && len(msgToForward.Photo) > 0 {
 
 		bestPhoto := msgToForward.Photo[0]
@@ -342,7 +345,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.ImageMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.ImageMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.ImageMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.ImageMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.ImageMessage.ContextInfo.MentionedJID = mentions
@@ -411,7 +414,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.VideoMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.VideoMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.VideoMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.VideoMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.VideoMessage.ContextInfo.MentionedJID = mentions
@@ -477,7 +480,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.PtvMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.PtvMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.PtvMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.PtvMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.PtvMessage.ContextInfo.MentionedJID = mentions
@@ -546,7 +549,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.VideoMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.VideoMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.VideoMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.VideoMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.VideoMessage.ContextInfo.MentionedJID = mentions
@@ -610,7 +613,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.AudioMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.AudioMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.AudioMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.AudioMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.AudioMessage.ContextInfo.MentionedJID = mentions
@@ -674,7 +677,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.AudioMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.AudioMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.AudioMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.AudioMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.AudioMessage.ContextInfo.MentionedJID = mentions
@@ -739,7 +742,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.DocumentMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.DocumentMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.DocumentMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.DocumentMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if len(mentions) > 0 {
 			msgToSend.DocumentMessage.ContextInfo.MentionedJID = mentions
@@ -847,7 +850,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.StickerMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.StickerMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.StickerMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.StickerMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if isEphemeral {
 			msgToSend.StickerMessage.ContextInfo.Expiration = &ephemeralTimer
@@ -910,7 +913,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		if isReply {
 			msgToSend.ContactMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 			msgToSend.ContactMessage.ContextInfo.Participant = proto.String(participant)
-			msgToSend.ContactMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+			msgToSend.ContactMessage.ContextInfo.QuotedMessage = quotedMsg
 		}
 		if isEphemeral {
 			msgToSend.ContactMessage.ContextInfo.Expiration = &ephemeralTimer
@@ -947,7 +950,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			if isReply {
 				msgToSend.LiveLocationMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 				msgToSend.LiveLocationMessage.ContextInfo.Participant = proto.String(participant)
-				msgToSend.LiveLocationMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+				msgToSend.LiveLocationMessage.ContextInfo.QuotedMessage = quotedMsg
 			}
 			if isEphemeral {
 				msgToSend.LiveLocationMessage.ContextInfo.Expiration = &ephemeralTimer
@@ -963,7 +966,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 			if isReply {
 				msgToSend.LocationMessage.ContextInfo.StanzaID = proto.String(stanzaId)
 				msgToSend.LocationMessage.ContextInfo.Participant = proto.String(participant)
-				msgToSend.LocationMessage.ContextInfo.QuotedMessage = &waE2E.Message{Conversation: proto.String("")}
+				msgToSend.LocationMessage.ContextInfo.QuotedMessage = quotedMsg
 			}
 			if isEphemeral {
 				msgToSend.LocationMessage.ContextInfo.Expiration = &ephemeralTimer
@@ -1021,7 +1024,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 				ContextInfo: &waE2E.ContextInfo{
 					StanzaID:      proto.String(stanzaId),
 					Participant:   proto.String(participant),
-					QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
+					QuotedMessage: quotedMsg,
 				},
 			}
 			if len(mentions) > 0 {
@@ -1222,4 +1225,33 @@ func SyncTopicNameByChatThreadPair(b *gotgbot.Bot, groupId int64, pair database.
 	}
 
 	TgEditForumTopicName(b, groupId, tgThreadId, newName)
+}
+
+// buildQuotedMsgFromTg constructs a WhatsApp message stub from a Telegram message so WhatsApp
+// can render the quote preview without any extra database storage.
+func buildQuotedMsgFromTg(msg *gotgbot.Message) *waE2E.Message {
+	if msg == nil {
+		return &waE2E.Message{Conversation: proto.String("")}
+	}
+	switch {
+	case msg.Text != "":
+		return &waE2E.Message{Conversation: proto.String(msg.Text)}
+	case len(msg.Photo) > 0:
+		return &waE2E.Message{ImageMessage: &waE2E.ImageMessage{Caption: proto.String(msg.Caption)}}
+	case msg.Video != nil:
+		return &waE2E.Message{VideoMessage: &waE2E.VideoMessage{Caption: proto.String(msg.Caption)}}
+	case msg.Voice != nil || msg.Audio != nil:
+		return &waE2E.Message{AudioMessage: &waE2E.AudioMessage{}}
+	case msg.Document != nil:
+		return &waE2E.Message{DocumentMessage: &waE2E.DocumentMessage{FileName: proto.String(msg.Document.FileName)}}
+	case msg.Sticker != nil:
+		return &waE2E.Message{StickerMessage: &waE2E.StickerMessage{}}
+	case msg.Location != nil:
+		return &waE2E.Message{LocationMessage: &waE2E.LocationMessage{
+			DegreesLatitude:  proto.Float64(msg.Location.Latitude),
+			DegreesLongitude: proto.Float64(msg.Location.Longitude),
+		}}
+	default:
+		return &waE2E.Message{Conversation: proto.String("")}
+	}
 }
