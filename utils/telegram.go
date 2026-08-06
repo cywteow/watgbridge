@@ -292,6 +292,16 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 	// Build a quoted message stub from the replied-to Telegram message content.
 	quotedMsg := buildQuotedMsgFromTg(msgToReplyTo)
 
+	waText, waCaption := msgToForward.Text, msgToForward.Caption
+	if tag := cfg.Telegram.TelegramTag; tag != "" {
+		if waText != "" {
+			waText += "\n\n" + tag
+		}
+		if waCaption != "" {
+			waCaption += "\n\n" + tag
+		}
+	}
+
 	if msgToForward.Photo != nil && len(msgToForward.Photo) > 0 {
 
 		bestPhoto := msgToForward.Photo[0]
@@ -327,7 +337,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 
 		msgToSend := &waE2E.Message{
 			ImageMessage: &waE2E.ImageMessage{
-				Caption:           proto.String(msgToForward.Caption),
+				Caption:           proto.String(waCaption),
 				URL:               proto.String(uploadedImage.URL),
 				DirectPath:        proto.String(uploadedImage.DirectPath),
 				MediaKey:          uploadedImage.MediaKey,
@@ -395,7 +405,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 
 		msgToSend := &waE2E.Message{
 			VideoMessage: &waE2E.VideoMessage{
-				Caption:       proto.String(msgToForward.Caption),
+				Caption:       proto.String(waCaption),
 				URL:           proto.String(uploadedVideo.URL),
 				DirectPath:    proto.String(uploadedVideo.DirectPath),
 				MediaKey:      uploadedVideo.MediaKey,
@@ -463,7 +473,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 
 		msgToSend := &waE2E.Message{
 			PtvMessage: &waE2E.VideoMessage{
-				Caption:       proto.String(msgToForward.Caption),
+				Caption:       proto.String(waCaption),
 				URL:           proto.String(uploadedVideo.URL),
 				DirectPath:    proto.String(uploadedVideo.DirectPath),
 				MediaKey:      uploadedVideo.MediaKey,
@@ -529,7 +539,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 
 		msgToSend := &waE2E.Message{
 			VideoMessage: &waE2E.VideoMessage{
-				Caption:        proto.String(msgToForward.Caption),
+				Caption:        proto.String(waCaption),
 				URL:            proto.String(uploadedAnimation.URL),
 				DirectPath:     proto.String(uploadedAnimation.DirectPath),
 				MediaKey:       uploadedAnimation.MediaKey,
@@ -726,7 +736,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 
 		msgToSend := &waE2E.Message{
 			DocumentMessage: &waE2E.DocumentMessage{
-				Caption:       proto.String(msgToForward.Caption),
+				Caption:       proto.String(waCaption),
 				Title:         proto.String(msgToForward.Document.FileName),
 				FileName:      proto.String(msgToForward.Document.FileName),
 				URL:           proto.String(uploadedDocument.URL),
@@ -1020,7 +1030,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 		msgToSend := &waE2E.Message{}
 		if isReply || len(mentions) > 0 || isEphemeral {
 			msgToSend.ExtendedTextMessage = &waE2E.ExtendedTextMessage{
-				Text: proto.String(msgToForward.Text),
+				Text: proto.String(waText),
 				ContextInfo: &waE2E.ContextInfo{
 					StanzaID:      proto.String(stanzaId),
 					Participant:   proto.String(participant),
@@ -1034,7 +1044,7 @@ func TgSendToWhatsApp(b *gotgbot.Bot, c *ext.Context,
 				msgToSend.ExtendedTextMessage.ContextInfo.Expiration = &ephemeralTimer
 			}
 		} else {
-			msgToSend.Conversation = proto.String(msgToForward.Text)
+			msgToSend.Conversation = proto.String(waText)
 		}
 
 		sentMsg, err := queue.WaSend(context.Background(), waChatJID, msgToSend)

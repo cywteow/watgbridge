@@ -36,6 +36,8 @@ telegram:
 
   queue_interval_ms: 1000 # The delay in milliseconds between each message when queue
 
+  telegram_tag: "" # Optional footer appended to every message sent to WhatsApp (e.g. "_Sent from Telegram_"). Leave empty to disable.
+
 whatsapp:
   session_name: watgbridge # This will appear in your Linked Devices in mobile app
   # All these values can be obtained by running /findcontacts and /getwagroups commands
