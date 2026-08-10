@@ -459,8 +459,10 @@ func FindContactHandler(b *gotgbot.Bot, c *ext.Context) error {
 	}
 
 	const (
-		batchSize  = 10
-		maxTextLen = 3800
+		batchSize = 10
+		legend    = "\n\n<i>(s) saved name · (b) business name · (p) push name</i>"
+		// Reserve space for header + legend in every page
+		maxTextLen = 3800 - len(legend) - 80
 	)
 
 	type fcPage struct {
@@ -505,7 +507,7 @@ func FindContactHandler(b *gotgbot.Bot, c *ext.Context) error {
 		} else {
 			header = fmt.Sprintf("Found %d matching contact(s) — page %d/%d:", resultsCount, pgIdx+1, len(pages))
 		}
-		text := header + "\n\n" + strings.Join(pg.descs, "\n\n")
+		text := header + "\n\n" + strings.Join(pg.descs, "\n\n") + legend
 		keyboard := &gotgbot.InlineKeyboardMarkup{InlineKeyboard: pg.btns}
 		_, err = utils.TgReplyTextByContext(b, c, text, keyboard, false)
 		if err != nil {
