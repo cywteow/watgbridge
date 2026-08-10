@@ -435,41 +435,78 @@ func FindContactHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 
-	const batchSize = 10
-
-	var rows [][]gotgbot.InlineKeyboardButton
+	// Collect entries in a stable order (map iteration is random)
+	type fcEntry struct {
+		displayName string
+		phone       string
+		callback    string
+	}
+	var entries []fcEntry
 	for jid, name := range results {
-		label := name
-		if label == "" {
-			label = jid
-		}
-		callbackData := "findcontact_" + jid
-		if len(callbackData) > 64 {
+		cb := "findcontact_" + jid
+		if len(cb) > 64 {
 			continue
 		}
-		rows = append(rows, []gotgbot.InlineKeyboardButton{{
-			Text:         label,
-			CallbackData: callbackData,
-		}})
+		phone := jid
+		if idx := strings.Index(jid, "@"); idx >= 0 {
+			phone = jid[:idx]
+		}
+		nm := name
+		if nm == "" {
+			nm = phone
+		}
+		entries = append(entries, fcEntry{nm, phone, cb})
 	}
 
-	totalBatches := (len(rows) + batchSize - 1) / batchSize
-	for i := 0; i < len(rows); i += batchSize {
-		end := i + batchSize
-		if end > len(rows) {
-			end = len(rows)
-		}
-		batch := rows[i:end]
-		batchNum := i/batchSize + 1
+	const (
+		batchSize  = 10
+		maxTextLen = 3800
+	)
 
-		var text string
-		if totalBatches == 1 {
-			text = fmt.Sprintf("Found %d matching contact(s). Tap one to open a chat topic:", resultsCount)
+	type fcPage struct {
+		descs []string
+		btns  [][]gotgbot.InlineKeyboardButton
+	}
+	var pages []fcPage
+	cur := fcPage{}
+	curLen := 0
+
+	for i, e := range entries {
+		num := i + 1
+		btnName := e.displayName
+		if len([]rune(btnName)) > 35 {
+			btnName = string([]rune(btnName)[:32]) + "…"
+		}
+		desc := fmt.Sprintf("<b>%d. %s</b>\n📱 <code>%s</code>",
+			num, html.EscapeString(e.displayName), html.EscapeString(e.phone))
+		btnText := fmt.Sprintf("%d. %s ↗", num, btnName)
+		descLen := len(desc) + 2 // +2 for the \n\n separator
+
+		if len(cur.descs) >= batchSize || (len(cur.descs) > 0 && curLen+descLen > maxTextLen) {
+			pages = append(pages, cur)
+			cur = fcPage{}
+			curLen = 0
+		}
+		cur.descs = append(cur.descs, desc)
+		cur.btns = append(cur.btns, []gotgbot.InlineKeyboardButton{{
+			Text:         btnText,
+			CallbackData: e.callback,
+		}})
+		curLen += descLen
+	}
+	if len(cur.descs) > 0 {
+		pages = append(pages, cur)
+	}
+
+	for pgIdx, pg := range pages {
+		var header string
+		if len(pages) == 1 {
+			header = fmt.Sprintf("Found %d matching contact(s):", resultsCount)
 		} else {
-			text = fmt.Sprintf("Found %d matching contact(s) — page %d/%d. Tap one to open a chat topic:", resultsCount, batchNum, totalBatches)
+			header = fmt.Sprintf("Found %d matching contact(s) — page %d/%d:", resultsCount, pgIdx+1, len(pages))
 		}
-
-		keyboard := &gotgbot.InlineKeyboardMarkup{InlineKeyboard: batch}
+		text := header + "\n\n" + strings.Join(pg.descs, "\n\n")
+		keyboard := &gotgbot.InlineKeyboardMarkup{InlineKeyboard: pg.btns}
 		_, err = utils.TgReplyTextByContext(b, c, text, keyboard, false)
 		if err != nil {
 			return err
