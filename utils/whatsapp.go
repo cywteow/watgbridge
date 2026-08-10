@@ -74,7 +74,8 @@ func WaFuzzyFindContacts(query string) (map[string]string, int, error) {
 		info := strings.SplitN(res, "||", 2)
 
 		contact := contacts[info[0]]
-		if _, exists := results[info[0]]; exists {
+		fullJID := contact.ID + "@" + contact.Server
+		if _, exists := results[fullJID]; exists {
 			continue
 		}
 
@@ -95,7 +96,7 @@ func WaFuzzyFindContacts(query string) (map[string]string, int, error) {
 			}
 			name += (contact.PushName + " (p)")
 		}
-		results[contact.ID] = name
+		results[fullJID] = name
 	}
 
 	return results, resultsCount, nil

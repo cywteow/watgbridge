@@ -148,6 +148,11 @@ func AddTelegramHandlers() {
 			return strings.HasPrefix(cq.Data, "revoke")
 		}, RevokeCallbackHandler), DispatcherCallbackHandlerGroup)
 
+	dispatcher.AddHandlerToGroup(handlers.NewCallback(
+		func(cq *gotgbot.CallbackQuery) bool {
+			return strings.HasPrefix(cq.Data, "findcontact_")
+		}, FindContactCallbackHandler), DispatcherCallbackHandlerGroup)
+
 	// Handler for Telegram message reactions → forward to WhatsApp
 	dispatcher.AddHandlerToGroup(telegramReactionHandler{targetChatID: cfg.Telegram.TargetChatID}, DispatcherForwardHandlerGroup)
 }
@@ -430,23 +435,85 @@ func FindContactHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return err
 	}
 
-	outputString := fmt.Sprintf("Here are the %v matching contacts:\n\n", resultsCount)
-	for jid, name := range results {
-		outputString += fmt.Sprintf("- <i>%s</i> [ <code>%s</code> ]\n",
-			html.EscapeString(name), html.EscapeString(jid))
+	const batchSize = 10
 
-		if len(outputString) >= 1800 {
-			utils.TgReplyTextByContext(b, c, outputString, nil, false)
-			time.Sleep(500 * time.Millisecond)
-			outputString = ""
+	var rows [][]gotgbot.InlineKeyboardButton
+	for jid, name := range results {
+		label := name
+		if label == "" {
+			label = jid
+		}
+		callbackData := "findcontact_" + jid
+		if len(callbackData) > 64 {
+			continue
+		}
+		rows = append(rows, []gotgbot.InlineKeyboardButton{{
+			Text:         label,
+			CallbackData: callbackData,
+		}})
+	}
+
+	totalBatches := (len(rows) + batchSize - 1) / batchSize
+	for i := 0; i < len(rows); i += batchSize {
+		end := i + batchSize
+		if end > len(rows) {
+			end = len(rows)
+		}
+		batch := rows[i:end]
+		batchNum := i/batchSize + 1
+
+		var text string
+		if totalBatches == 1 {
+			text = fmt.Sprintf("Found %d matching contact(s). Tap one to open a chat topic:", resultsCount)
+		} else {
+			text = fmt.Sprintf("Found %d matching contact(s) — page %d/%d. Tap one to open a chat topic:", resultsCount, batchNum, totalBatches)
+		}
+
+		keyboard := &gotgbot.InlineKeyboardMarkup{InlineKeyboard: batch}
+		_, err = utils.TgReplyTextByContext(b, c, text, keyboard, false)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
-	if len(outputString) > 0 {
-		_, err = utils.TgReplyTextByContext(b, c, outputString, nil, false)
+func FindContactCallbackHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	cq := c.CallbackQuery
+	jidStr := strings.TrimPrefix(cq.Data, "findcontact_")
+
+	cfg := state.State.Config
+
+	waJID, ok := utils.WaParseJID(jidStr)
+	if !ok {
+		_, err := cq.Answer(b, &gotgbot.AnswerCallbackQueryOpts{
+			Text:      "Invalid contact JID",
+			ShowAlert: true,
+		})
 		return err
 	}
-	return nil
+
+	contactName := utils.WaGetContactName(waJID)
+	_, err := utils.TgGetOrMakeThreadFromWa_String(waJID.String(), cfg.Telegram.TargetChatID, contactName)
+	if err != nil {
+		_, answerErr := cq.Answer(b, &gotgbot.AnswerCallbackQueryOpts{
+			Text:      "Failed to open topic: " + err.Error(),
+			ShowAlert: true,
+		})
+		if answerErr != nil {
+			return answerErr
+		}
+		return err
+	}
+
+	_, err = cq.Answer(b, &gotgbot.AnswerCallbackQueryOpts{
+		Text: "Opened topic for " + contactName,
+	})
+	return err
 }
 
 func UpdateAndRestartHandler(b *gotgbot.Bot, c *ext.Context) error {
