@@ -155,6 +155,64 @@ func AddTelegramHandlers() {
 
 	// Handler for Telegram message reactions → forward to WhatsApp
 	dispatcher.AddHandlerToGroup(telegramReactionHandler{targetChatID: cfg.Telegram.TargetChatID}, DispatcherForwardHandlerGroup)
+
+	// Handler for Telegram message edits → forward to WhatsApp
+	dispatcher.AddHandlerToGroup(telegramEditedMessageHandler{targetChatID: cfg.Telegram.TargetChatID}, DispatcherForwardHandlerGroup)
+}
+
+// telegramEditedMessageHandler implements ext.Handler for edited_message updates.
+type telegramEditedMessageHandler struct {
+	targetChatID int64
+}
+
+func (h telegramEditedMessageHandler) CheckUpdate(b *gotgbot.Bot, ctx *ext.Context) bool {
+	return ctx.Update.EditedMessage != nil && ctx.Update.EditedMessage.Chat.Id == h.targetChatID
+}
+
+func (h telegramEditedMessageHandler) HandleUpdate(b *gotgbot.Bot, ctx *ext.Context) error {
+	return BridgeTelegramEditToWhatsAppHandler(b, ctx)
+}
+
+func (h telegramEditedMessageHandler) Name() string {
+	return "BridgeTelegramEditToWhatsAppHandler"
+}
+
+func BridgeTelegramEditToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	editedMsg := c.Update.EditedMessage
+	newText := editedMsg.Text
+	if newText == "" {
+		newText = editedMsg.Caption
+	}
+	if newText == "" {
+		return nil
+	}
+
+	waMsgId, _, waChatId, err := database.MsgIdGetWaFromTg(editedMsg.Chat.Id, editedMsg.MessageId, editedMsg.MessageThreadId)
+	if err != nil || waMsgId == "" {
+		return nil
+	}
+
+	waChatJID, _ := utils.WaParseJID(waChatId)
+
+	_, err = queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
+		ProtocolMessage: &waE2E.ProtocolMessage{
+			Key: &waCommon.MessageKey{
+				RemoteJID: proto.String(waChatJID.String()),
+				FromMe:    proto.Bool(true),
+				ID:        proto.String(waMsgId),
+			},
+			Type: waE2E.ProtocolMessage_MESSAGE_EDIT.Enum(),
+			EditedMessage: &waE2E.Message{
+				Conversation: proto.String(newText),
+			},
+			TimestampMS: proto.Int64(time.Now().UnixMilli()),
+		},
+	})
+	return err
 }
 
 // telegramReactionHandler implements ext.Handler for MessageReaction updates.
