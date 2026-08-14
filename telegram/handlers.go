@@ -191,6 +191,10 @@ func BridgeTelegramEditToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 		return nil
 	}
 
+	if tag := state.State.Config.Telegram.TelegramTag; tag != "" {
+		newText += "\n\n" + tag
+	}
+
 	waMsgId, _, waChatId, err := database.MsgIdGetWaFromTg(editedMsg.Chat.Id, editedMsg.MessageId, editedMsg.MessageThreadId)
 	if err != nil || waMsgId == "" {
 		return nil
