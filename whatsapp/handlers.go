@@ -94,8 +94,15 @@ func WhatsAppEventHandler(evt interface{}) {
 		} else {
 			if extendedMessageText := v.Message.GetExtendedTextMessage().GetText(); extendedMessageText != "" {
 				text = extendedMessageText
-			} else {
-				text = v.Message.GetConversation()
+			} else if conversation := v.Message.GetConversation(); conversation != "" {
+				text = conversation
+			} else if t := v.Message.GetTemplateMessage().GetHydratedTemplate().GetHydratedContentText(); t != "" {
+				// business template messages (e.g. order/delivery notifications)
+				text = t
+			} else if t := v.Message.GetInteractiveMessage().GetBody().GetText(); t != "" {
+				text = t
+			} else if t := v.Message.GetButtonsMessage().GetContentText(); t != "" {
+				text = t
 			}
 		}
 
