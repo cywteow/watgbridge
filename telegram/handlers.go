@@ -102,6 +102,10 @@ func AddTelegramHandlers() {
 			"Unlink the current thread from its WhatsApp chat",
 		},
 		waTgBridgeCommand{
+			handlers.NewCommand("topicinfo", TopicInfoHandler),
+			"Show debug info (chat ID, thread ID, WhatsApp JID) for the current topic",
+		},
+		waTgBridgeCommand{
 			handlers.NewCommand("getprofilepicture", GetProfilePictureHandler),
 			"Get the profile picture of user or group using its ID",
 		},
@@ -833,6 +837,124 @@ func UnlinkThreadHandler(b *gotgbot.Bot, c *ext.Context) error {
 	}
 
 	_, err = utils.TgReplyTextByContext(b, c, "Successfully unlinked", nil, false)
+	return err
+}
+
+func TopicInfoHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	if !c.EffectiveMessage.IsTopicMessage || c.EffectiveMessage.MessageThreadId == 0 {
+		_, err := utils.TgReplyTextByContext(b, c, "This command only works inside a topic, not in General", nil, false)
+		return err
+	}
+
+	var (
+		cfg        = state.State.Config
+		tgChatId   = c.EffectiveChat.Id
+		tgThreadId = c.EffectiveMessage.MessageThreadId
+	)
+
+	waChatId, err := database.ChatThreadGetWaFromTg(tgChatId, tgThreadId)
+	if err != nil {
+		return utils.TgReplyWithErrorByContext(b, c, "Failed to look up WhatsApp JID for this topic", err)
+	}
+
+	// ── Telegram identifiers ──────────────────────────────────────────────
+	reply := fmt.Sprintf("<b>Topic Debug Info</b>\n"+
+		"TG Chat ID: <code>%d</code>\n"+
+		"TG Thread ID: <code>%d</code>\n",
+		tgChatId, tgThreadId)
+
+	if waChatId == "" {
+		reply += "WA JID: <i>No WhatsApp JID mapped to this topic</i>"
+		_, err = utils.TgReplyTextByContext(b, c, reply, nil, false)
+		return err
+	}
+
+	// ── WhatsApp JID & type ───────────────────────────────────────────────
+	parsedJID, _ := utils.WaParseJID(waChatId)
+
+	chatType := "Unknown"
+	switch parsedJID.Server {
+	case waTypes.DefaultUserServer:
+		chatType = "Private"
+	case waTypes.GroupServer:
+		chatType = "Group"
+	case waTypes.HiddenUserServer:
+		chatType = "LID (linked-device identity)"
+	case waTypes.NewsletterServer:
+		chatType = "Newsletter / Channel"
+	case waTypes.BroadcastServer:
+		chatType = "Broadcast"
+	}
+
+	reply += fmt.Sprintf("WA JID: <code>%s</code>\n", html.EscapeString(waChatId))
+	reply += fmt.Sprintf("Chat type: %s\n", chatType)
+
+	// ── Contact names stored in DB ────────────────────────────────────────
+	firstName, fullName, pushName, businessName, nameFound, _ :=
+		database.ContactNameGet(parsedJID.User, parsedJID.Server)
+	if nameFound {
+		reply += "\n<b>Stored contact names:</b>\n"
+		if firstName != "" {
+			reply += fmt.Sprintf("  First name: %s\n", html.EscapeString(firstName))
+		}
+		if fullName != "" {
+			reply += fmt.Sprintf("  Full name: %s\n", html.EscapeString(fullName))
+		}
+		if pushName != "" {
+			reply += fmt.Sprintf("  Push name: %s\n", html.EscapeString(pushName))
+		}
+		if businessName != "" {
+			reply += fmt.Sprintf("  Business name: %s\n", html.EscapeString(businessName))
+		}
+	} else {
+		reply += "Stored contact names: <i>none</i>\n"
+	}
+
+	// ── Disappearing messages ─────────────────────────────────────────────
+	isEphemeral, ephemeralTimer, ephemeralFound, _ := database.GetEphemeralSettings(waChatId)
+	if ephemeralFound && isEphemeral {
+		timerStr := ""
+		switch ephemeralTimer {
+		case 86400:
+			timerStr = "24 hours"
+		case 604800:
+			timerStr = "7 days"
+		case 7776000:
+			timerStr = "90 days"
+		default:
+			timerStr = fmt.Sprintf("%d seconds", ephemeralTimer)
+		}
+		reply += fmt.Sprintf("Disappearing messages: %s\n", timerStr)
+	} else {
+		reply += "Disappearing messages: off\n"
+	}
+
+	// ── Pinned profile-pic message in topic ───────────────────────────────
+	pinnedMsgId, _ := database.ChatThreadGetPinnedMsgId(waChatId, tgChatId)
+	if pinnedMsgId != 0 {
+		reply += fmt.Sprintf("Pinned msg ID: <code>%d</code>\n", pinnedMsgId)
+	} else {
+		reply += "Pinned msg ID: <i>none</i>\n"
+	}
+
+	// ── Config suppression flags ──────────────────────────────────────────
+	inIgnoreChats := slices.Contains(cfg.WhatsApp.IgnoreChats, parsedJID.User)
+	inStatusIgnored := slices.Contains(cfg.WhatsApp.StatusIgnoredChats, parsedJID.User)
+	reply += fmt.Sprintf("In ignore_chats: %v\n", inIgnoreChats)
+	reply += fmt.Sprintf("In status_ignored_chats: %v\n", inStatusIgnored)
+
+	// ── Bridged message count ─────────────────────────────────────────────
+	var msgCount int64
+	state.State.Database.Model(&database.MsgIdPair{}).
+		Where("wa_chat_id = ? AND tg_chat_id = ?", waChatId, tgChatId).
+		Count(&msgCount)
+	reply += fmt.Sprintf("Bridged messages in DB: <code>%d</code>\n", msgCount)
+
+	_, err = utils.TgReplyTextByContext(b, c, reply, nil, false)
 	return err
 }
 
