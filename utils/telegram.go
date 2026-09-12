@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	DownloadSizeLimit int64  = 20971520
-	UploadSizeLimit   uint64 = 52428800
+	DownloadSizeLimit int64  = 104857600
+	UploadSizeLimit   uint64 = 104857600
 )
 
 // TgEditForumTopicName edits the name of a forum topic (thread) in a Telegram supergroup.
