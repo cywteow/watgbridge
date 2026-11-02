@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	goVCard "github.com/emersion/go-vcard"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/proto/waHistorySync"
 	waTypes "go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"go.uber.org/zap"
@@ -32,6 +34,9 @@ func WhatsAppEventHandler(evt interface{}) {
 
 	case *events.LoggedOut:
 		LogoutHandler(v)
+
+	case *events.HistorySync:
+		HistorySyncEventHandler(v)
 
 	case *events.Receipt:
 		ReceiptEventHandler(v)
@@ -2105,6 +2110,50 @@ func GroupInfoEventHandler(v *events.GroupInfo) {
 			logger.Error("failed to send message", zap.Error(err))
 		}
 	}
+}
+
+// HistorySyncEventHandler bridges messages received from an on-demand history
+// request, skipping those that were already bridged. Other history sync types
+// (initial pairing, push names, etc.) are ignored.
+func HistorySyncEventHandler(v *events.HistorySync) {
+	var (
+		logger = state.State.Logger
+		client = state.State.WhatsAppClient
+	)
+	defer logger.Sync()
+
+	if v.Data.GetSyncType() != waHistorySync.HistorySync_ON_DEMAND {
+		return
+	}
+
+	var msgs []*events.Message
+	for _, conv := range v.Data.GetConversations() {
+		chatJID, err := waTypes.ParseJID(conv.GetID())
+		if err != nil {
+			continue
+		}
+		for _, hm := range conv.GetMessages() {
+			parsed, err := client.ParseWebMessage(chatJID, hm.GetMessage())
+			if err != nil {
+				logger.Warn("failed to parse history message", zap.Error(err))
+				continue
+			}
+			if _, _, tgMsgId, _ := database.MsgIdGetTgFromWa(parsed.Info.ID, parsed.Info.Chat.ToNonAD().String()); tgMsgId != 0 {
+				continue
+			}
+			msgs = append(msgs, parsed)
+		}
+	}
+
+	sort.SliceStable(msgs, func(i, j int) bool {
+		return msgs[i].Info.Timestamp.Before(msgs[j].Info.Timestamp)
+	})
+
+	for _, m := range msgs {
+		WhatsAppEventHandler(m)
+	}
+
+	logger.Info("processed on-demand history sync", zap.Int("messages", len(msgs)))
 }
 
 func LogoutHandler(v *events.LoggedOut) {

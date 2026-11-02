@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -76,6 +77,10 @@ func AddTelegramHandlers() {
 		waTgBridgeCommand{
 			handlers.NewCommand("synccontacts", SyncContactsHandler),
 			"Try to sync the contacts list from WhatsApp",
+		},
+		waTgBridgeCommand{
+			handlers.NewCommand("synchistory", SyncHistoryHandler),
+			"Reply to a bridged message to fetch older WhatsApp messages before it (optional count, default 50)",
 		},
 		waTgBridgeCommand{
 			handlers.NewCommand("clearpairhistory", ClearMessageIdPairsHistoryHandler),
@@ -698,6 +703,65 @@ func SyncContactsHandler(b *gotgbot.Bot, c *ext.Context) error {
 	}
 
 	_, err = utils.TgReplyTextByContext(b, c, "Successfully synced the contact list", nil, false)
+	return err
+}
+
+func SyncHistoryHandler(b *gotgbot.Bot, c *ext.Context) error {
+	if !utils.TgUpdateIsAuthorized(b, c) {
+		return nil
+	}
+
+	reply := c.EffectiveMessage.ReplyToMessage
+	if reply == nil {
+		_, err := utils.TgReplyTextByContext(b, c, "Reply to a bridged message to fetch history older than it", nil, false)
+		return err
+	}
+
+	count := 50
+	if args := strings.Fields(c.EffectiveMessage.Text); len(args) > 1 {
+		n, err := strconv.Atoi(args[1])
+		if err != nil || n < 1 {
+			_, err := utils.TgReplyTextByContext(b, c, "Count must be a positive number", nil, false)
+			return err
+		}
+		count = n
+	}
+
+	waMsgId, participantId, waChatId, err := database.MsgIdGetWaFromTgByMsgId(c.EffectiveChat.Id, reply.MessageId)
+	if err != nil || waMsgId == "" {
+		_, err := utils.TgReplyTextByContext(b, c, "The replied message is not a bridged WhatsApp message", nil, false)
+		return err
+	}
+
+	chatJID, err := waTypes.ParseJID(waChatId)
+	if err != nil {
+		return utils.TgReplyWithErrorByContext(b, c, "Invalid WhatsApp chat ID", err)
+	}
+
+	waClient := state.State.WhatsAppClient
+	info := waTypes.MessageInfo{
+		MessageSource: waTypes.MessageSource{
+			Chat:    chatJID,
+			IsGroup: chatJID.Server == waTypes.GroupServer,
+		},
+		ID:        waMsgId,
+		Timestamp: time.Unix(reply.Date, 0),
+	}
+	if participantId != "" {
+		if senderJID, err := waTypes.ParseJID(participantId); err == nil {
+			info.Sender = senderJID
+		}
+	}
+	if waClient.Store.ID != nil && info.Sender.User == waClient.Store.ID.User {
+		info.IsFromMe = true
+	}
+
+	_, err = waClient.SendPeerMessage(context.Background(), waClient.BuildHistorySyncRequest(&info, count))
+	if err != nil {
+		return utils.TgReplyWithErrorByContext(b, c, "Failed to request history", err)
+	}
+
+	_, err = utils.TgReplyTextByContext(b, c, "History requested. Older messages will be bridged once your phone responds (the phone must be online).", nil, false)
 	return err
 }
 
