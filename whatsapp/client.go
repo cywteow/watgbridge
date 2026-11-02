@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"os"
+	"sync"
 
 	"watgbridge/state"
 
@@ -99,12 +100,76 @@ func NewWhatsAppClient() error {
 		return fmt.Errorf("could not initialize device store for Whatsapp : %s", err)
 	}
 
+	waContainer = container
+	waClientLog = waClientLogger
+	waLogger = logger
+
 	client := whatsmeow.NewClient(deviceStore, waClientLogger)
 	state.State.WhatsAppClient = client
 
 	if client.Store.ID == nil {
-		qrChan, _ := client.GetQRChannel(context.Background())
+		err = loginWithQR(client, logger)
+		if err != nil {
+			return err
+		}
+	} else {
 		err = client.Connect()
+		if err != nil {
+			return fmt.Errorf("could not connect to Whatsapp : %s", err)
+		}
+	}
+
+	logger.Info("successfully logged into WhatsApp",
+		zap.String("push_name", client.Store.PushName),
+		zap.String("jid", client.Store.ID.String()),
+	)
+
+	return nil
+}
+
+var (
+	waContainer *sqlstore.Container
+	waClientLog waLog.Logger
+	waLogger    *zap.Logger
+	reloginMu   sync.Mutex
+)
+
+// Relogin discards the logged-out session, creates a fresh device and
+// client, and sends a new QR code to the owner for authentication.
+func Relogin() {
+	if !reloginMu.TryLock() {
+		return
+	}
+	defer reloginMu.Unlock()
+
+	if waContainer == nil {
+		return
+	}
+
+	if old := state.State.WhatsAppClient; old != nil {
+		old.Disconnect()
+	}
+
+	client := whatsmeow.NewClient(waContainer.NewDevice(), waClientLog)
+	client.AddEventHandler(WhatsAppEventHandler)
+	state.State.WhatsAppClient = client
+
+	if err := loginWithQR(client, waLogger); err != nil {
+		waLogger.Error("failed to re-authenticate WhatsApp", zap.Error(err))
+		return
+	}
+
+	if client.Store.ID != nil {
+		waLogger.Info("successfully re-logged into WhatsApp",
+			zap.String("jid", client.Store.ID.String()),
+		)
+	}
+}
+
+func loginWithQR(client *whatsmeow.Client, logger *zap.Logger) error {
+	{
+		qrChan, _ := client.GetQRChannel(context.Background())
+		err := client.Connect()
 		if err != nil {
 			return fmt.Errorf("could not connect to Whatsapp for login : %s", err)
 		}
@@ -144,17 +209,6 @@ func NewWhatsAppClient() error {
 				)
 			}
 		}
-	} else {
-		err = client.Connect()
-		if err != nil {
-			return fmt.Errorf("could not connect to Whatsapp : %s", err)
-		}
 	}
-
-	logger.Info("successfully logged into WhatsApp",
-		zap.String("push_name", client.Store.PushName),
-		zap.String("jid", client.Store.ID.String()),
-	)
-
 	return nil
 }

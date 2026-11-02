@@ -2118,5 +2118,9 @@ func LogoutHandler(v *events.LoggedOut) {
 	updateText := "You have been logged out from WhatsApp:\n\n"
 	updateText += fmt.Sprintf("<b>Reason:</b> %s", html.EscapeString(v.Reason.String()))
 
+	updateText += "\n\nRe-authentication started, a new QR code will be sent shortly."
+
 	utils.TgSendTextById(tgBot, cfg.Telegram.OwnerID, 0, updateText)
+
+	go Relogin()
 }
