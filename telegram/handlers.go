@@ -308,16 +308,16 @@ func tryEditOwnMessage(b *gotgbot.Bot, c *ext.Context, stanzaID, participantID, 
 	if msg.Text == "" || waClient.Store.ID == nil || participantID == "" {
 		return false, nil
 	}
-	sender, err := utils.WaParseJID(participantID)
-	if err != nil || sender.User != waClient.Store.ID.User {
+	sender, ok := utils.WaParseJID(participantID)
+	if !ok || sender.User != waClient.Store.ID.User {
 		return false, nil
 	}
-	waChatJID, err := utils.WaParseJID(waChatID)
-	if err != nil {
+	waChatJID, ok := utils.WaParseJID(waChatID)
+	if !ok {
 		return false, nil
 	}
 
-	_, err = queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
+	_, err := queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
 		ProtocolMessage: &waE2E.ProtocolMessage{
 			Key: &waCommon.MessageKey{
 				RemoteJID: proto.String(waChatJID.String()),
