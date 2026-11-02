@@ -183,23 +183,25 @@ func loginWithQR(client *whatsmeow.Client, logger *zap.Logger) error {
 
 				if state.State.TelegramBot != nil {
 					qrCodePNG, err := qrcode.Encode(evt.Code, qrcode.Highest, 512)
-					if err != nil {
-						state.State.TelegramBot.SendMessage(
-							state.State.Config.Telegram.OwnerID,
-							fmt.Sprintf(
-								"Please check your terminal and scan the QR code to login to WhatsApp. Failed to encode to PNG and send here:\n<code>%s</code>",
-								html.EscapeString(err.Error()),
-							),
-							&gotgbot.SendMessageOpts{},
-						)
-					} else {
-						state.State.TelegramBot.SendPhoto(
-							state.State.Config.Telegram.OwnerID,
-							gotgbot.InputFileByReader("qrcode.png", bytes.NewReader(qrCodePNG)),
-							&gotgbot.SendPhotoOpts{
-								Caption: "Scan the above QR code to login to WhatsApp.",
-							},
-						)
+					for _, ownerID := range state.State.Config.Telegram.OwnerIDs {
+						if err != nil {
+							state.State.TelegramBot.SendMessage(
+								ownerID,
+								fmt.Sprintf(
+									"Please check your terminal and scan the QR code to login to WhatsApp. Failed to encode to PNG and send here:\n<code>%s</code>",
+									html.EscapeString(err.Error()),
+								),
+								&gotgbot.SendMessageOpts{},
+							)
+						} else {
+							state.State.TelegramBot.SendPhoto(
+								ownerID,
+								gotgbot.InputFileByReader("qrcode.png", bytes.NewReader(qrCodePNG)),
+								&gotgbot.SendPhotoOpts{
+									Caption: "Scan the above QR code to login to WhatsApp.",
+								},
+							)
+						}
 					}
 				}
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)

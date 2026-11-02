@@ -9,6 +9,41 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// OwnerIDs is a list of owner Telegram IDs. In YAML it accepts either a single
+// integer (legacy format) or a list of integers.
+type OwnerIDs []int64
+
+func (o *OwnerIDs) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.SequenceNode {
+		var ids []int64
+		if err := value.Decode(&ids); err != nil {
+			return err
+		}
+		*o = ids
+		return nil
+	}
+
+	var id int64
+	if err := value.Decode(&id); err != nil {
+		return err
+	}
+	if id == 0 {
+		*o = nil
+	} else {
+		*o = OwnerIDs{id}
+	}
+	return nil
+}
+
+func (o OwnerIDs) Contains(id int64) bool {
+	for _, v := range o {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
 type Config struct {
 	Path             string `yaml:"-"`
 	TimeZone         string `yaml:"time_zone"`
@@ -25,7 +60,7 @@ type Config struct {
 		BotToken            string  `yaml:"bot_token"`
 		APIURL              string  `yaml:"api_url"`
 		SudoUsersID         []int64 `yaml:"sudo_users_id"`
-		OwnerID             int64   `yaml:"owner_id"`
+		OwnerIDs            OwnerIDs `yaml:"owner_id"`
 		TargetChatID        int64   `yaml:"target_chat_id"`
 		SelfHostedAPI       bool    `yaml:"self_hosted_api"`
 		SkipVideoStickers   bool    `yaml:"skip_video_stickers"`

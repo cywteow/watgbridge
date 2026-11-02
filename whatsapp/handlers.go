@@ -2169,7 +2169,9 @@ func LogoutHandler(v *events.LoggedOut) {
 
 	updateText += "\n\nRe-authentication started, a new QR code will be sent shortly."
 
-	utils.TgSendTextById(tgBot, cfg.Telegram.OwnerID, 0, updateText)
+	for _, ownerID := range cfg.Telegram.OwnerIDs {
+		utils.TgSendTextById(tgBot, ownerID, 0, updateText)
+	}
 
 	go Relogin()
 }

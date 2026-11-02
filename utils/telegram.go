@@ -149,12 +149,12 @@ func TgUpdateIsAuthorized(b *gotgbot.Bot, c *ext.Context) bool {
 	var (
 		cfg         = state.State.Config
 		sender      = c.EffectiveSender.User
-		ownerID     = cfg.Telegram.OwnerID
+		ownerIDs    = cfg.Telegram.OwnerIDs
 		sudoUsersID = cfg.Telegram.SudoUsersID
 	)
 
 	if sender != nil &&
-		(slices.Contains(sudoUsersID, sender.Id) || sender.Id == ownerID) {
+		(slices.Contains(sudoUsersID, sender.Id) || ownerIDs.Contains(sender.Id)) {
 		return true
 	}
 

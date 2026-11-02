@@ -256,7 +256,7 @@ func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 	cfg := state.State.Config
 	isAuthorized := false
 	if reaction.User != nil {
-		isAuthorized = reaction.User.Id == cfg.Telegram.OwnerID ||
+		isAuthorized = cfg.Telegram.OwnerIDs.Contains(reaction.User.Id) ||
 			slices.Contains(cfg.Telegram.SudoUsersID, reaction.User.Id)
 	}
 	if !isAuthorized {
