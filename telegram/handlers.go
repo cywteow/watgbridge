@@ -295,6 +295,64 @@ func TelegramReactionToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 	return err
 }
 
+// tryEditOwnMessage treats a plain-text reply to the bridged copy of one of the
+// user's own WhatsApp messages as an edit of that message. It reports whether
+// the update was handled.
+func tryEditOwnMessage(b *gotgbot.Bot, c *ext.Context, stanzaID, participantID, waChatID string) (bool, error) {
+	var (
+		waClient = state.State.WhatsAppClient
+		msg      = c.EffectiveMessage
+		replied  = msg.ReplyToMessage
+	)
+
+	if msg.Text == "" || waClient.Store.ID == nil || participantID == "" {
+		return false, nil
+	}
+	sender, err := utils.WaParseJID(participantID)
+	if err != nil || sender.User != waClient.Store.ID.User {
+		return false, nil
+	}
+	waChatJID, err := utils.WaParseJID(waChatID)
+	if err != nil {
+		return false, nil
+	}
+
+	_, err = queue.WaSend(context.Background(), waChatJID, &waE2E.Message{
+		ProtocolMessage: &waE2E.ProtocolMessage{
+			Key: &waCommon.MessageKey{
+				RemoteJID: proto.String(waChatJID.String()),
+				FromMe:    proto.Bool(true),
+				ID:        proto.String(stanzaID),
+			},
+			Type: waE2E.ProtocolMessage_MESSAGE_EDIT.Enum(),
+			EditedMessage: &waE2E.Message{
+				Conversation: proto.String(msg.Text),
+			},
+			TimestampMS: proto.Int64(time.Now().UnixMilli()),
+		},
+	})
+	if err != nil {
+		return true, utils.TgReplyWithErrorByContext(b, c, "Failed to edit the message on WhatsApp", err)
+	}
+
+	escaped := html.EscapeString(msg.Text)
+	if replied.Text != "" {
+		b.EditMessageText(escaped, &gotgbot.EditMessageTextOpts{
+			ChatId:    c.EffectiveChat.Id,
+			MessageId: replied.MessageId,
+		})
+	} else if replied.Caption != "" {
+		b.EditMessageCaption(&gotgbot.EditMessageCaptionOpts{
+			ChatId:    c.EffectiveChat.Id,
+			MessageId: replied.MessageId,
+			Caption:   escaped,
+		})
+	}
+	msg.Delete(b, nil)
+
+	return true, nil
+}
+
 func BridgeTelegramToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 	if !utils.TgUpdateIsAuthorized(b, c) {
 		return nil
@@ -325,6 +383,10 @@ func BridgeTelegramToWhatsAppHandler(b *gotgbot.Bot, c *ext.Context) error {
 
 		if waChatID == waClient.Store.ID.String() {
 			waChatID = participantID
+		}
+
+		if handled, err := tryEditOwnMessage(b, c, stanzaID, participantID, waChatID); handled {
+			return err
 		}
 	} else {
 		waChatID, err = database.ChatThreadGetWaFromTg(c.EffectiveChat.Id, c.EffectiveMessage.MessageThreadId)
