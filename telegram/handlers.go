@@ -1107,7 +1107,7 @@ func handleBlockUnblockUser(b *gotgbot.Bot, c *ext.Context, action events.Blockl
 		return err
 	}
 	jid, _ := utils.WaParseJID(waChatId)
-	_, err = state.State.WhatsAppClient.UpdateBlocklist(context.Background(), jid, action)
+	_, err = state.State.WhatsAppClient.UpdateBlocklist(context.Background(), jid, action, "")
 	if err != nil {
 		err = utils.TgReplyWithErrorByContext(b, c, "Failed to change the blocklist status", err)
 		return err
